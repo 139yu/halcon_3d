@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.05.0.0">
+<procedure name="gen_cam_par_and_pose">
+<interface>
+<ic>
+<par name="IsTelecentric" base_type="ctrl" dimension="0"/>
+<par name="ObjectModel3D" base_type="ctrl" dimension="0"/>
+<par name="BorderFact" base_type="ctrl" dimension="0"/>
+<par name="Width" base_type="ctrl" dimension="0"/>
+<par name="Height" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="PoseInit" base_type="ctrl" dimension="0"/>
+<par name="CameraParam" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>if(IsTelecentric)</l>
+<c>    * 获取模型最小角点和最大角点坐标</c>
+<l>    get_object_model_3d_params(ObjectModel3D,'bounding_box1',BB1)</l>
+<c>    * 计算模型最远两点之间距离</c>
+<l>    max_diameter_object_model_3d (ObjectModel3D, Diameter)</l>
+<c>    * 中心平移到原点</c>
+<l>    create_pose(-(BB1[0] + BB1[3]) / 2,-(BB1[1] + BB1[4]) / 2,-BB1[2] + Diameter,0,0,0,\
+                'Rp+T','gba','point',PoseInit)</l>
+<l>    rigid_trans_object_model_3d (ObjectModel3D, PoseInit, ObjectModel3DRigidTrans)</l>
+<l>    get_object_model_3d_params(ObjectModel3DRigidTrans,'bounding_box1',BB1)</l>
+<l>    SX := (BB1[3] - BB1[0]) * BorderFact / Width</l>
+<l>    SY := (BB1[4] - BB1[1]) * BorderFact / Height</l>
+<c>    * 使用物体参数定义相机内参，物方和像方尺度1:1对应</c>
+<c>    * 0：畸变系数，设为0（无畸变）。</c>
+<c>    * SX, SY：上面算出的像元尺寸。</c>
+<c>    *Width/2, Height/2：主点坐标，设为图像中心。</c>
+<c>    *Width, Height：图像分辨率。</c>
+<c>    *CameraParam：输出的相机内参元组。</c>
+<l>    gen_cam_par_area_scan_telecentric_division (1, 0, SX, SY,Width / 2, Height  / 2, Width,Height, CameraParam)</l>
+<l>else</l>
+<c>    * 焦距8mm。像元尺寸5.2μm。</c>
+<c>    * 主点设为图像中心，图像尺寸为 Width × Height</c>
+<l>    gen_cam_par_area_scan_division (0.008,0,5.2e-006,5.2e-006,Width / 2,Height / 2,\
+                                                Width,Height,CameraParam)</l>
+<c>    * 从相机内参中读取焦距、像元尺寸</c>
+<l>    get_cam_par_data (CameraParam, 'focus', Focus)</l>
+<l>    get_cam_par_data(CameraParam,'sx',SX)</l>
+<l>    get_cam_par_data (CameraParam, 'sy',SY)</l>
+<c>    </c>
+<l>    get_object_model_3d_params(ObjectModel3D,'bounding_box1',BB1)</l>
+<c>    </c>
+<l>    OffsetForX := Focus * (BB1[3] - BB1[0]) / (Width * SX / BorderFact)</l>
+<l>    OffsetForY := Focus * (BB1[4] - BB1[1]) / (Height * SY / BorderFact)</l>
+<l>    Offset := max([OffsetForX,OffsetForY])</l>
+<c>    </c>
+<l>    create_pose(-(BB1[0] + BB1[3]) / 2,-(BB1[1] + BB1[4]) / 2, -BB1[2] + Offset,0,0,0,'Rp+T','gba','point',PoseInit)</l>
+<l>endif</l>
+<c></c>
+<l>return()</l>
+</body>
+<docu id="gen_cam_par_and_pose">
+<parameters>
+<parameter id="BorderFact"/>
+<parameter id="CameraParam"/>
+<parameter id="Height"/>
+<parameter id="IsTelecentric"/>
+<parameter id="ObjectModel3D"/>
+<parameter id="PoseInit"/>
+<parameter id="Width"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

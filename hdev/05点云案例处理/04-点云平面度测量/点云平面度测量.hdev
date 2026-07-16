@@ -1,0 +1,395 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>dev_get_window (WindowHandle)</l>
+<c></c>
+<l>read_image (Image, './test.tif')</l>
+<l>dev_display (Image)</l>
+<l>xResolution:=0.06</l>
+<l>yResolution:=0.06</l>
+<l>zResolution:=0.001 </l>
+<l>ScaleFactor:=[xResolution,yResolution,zResolution]</l>
+<c></c>
+<l>create_drawing_object_rectangle2 (150, 150, 0, 100, 100, DrawID)</l>
+<l>set_drawing_object_params (DrawID, 'color', 'sky blue')</l>
+<l>set_drawing_object_params (DrawID, 'line_width', 2)</l>
+<l>attach_drawing_object_to_window (WindowHandle, DrawID)</l>
+<l>set_display_font (WindowHandle, 16, 'mono', 'true', 'false')</l>
+<c></c>
+<l>Text := '选择测量平面'</l>
+<l>dev_disp_text (Text, 'window', 'top', 'left', \
+               ['forest green','orange'], ['box_color'], ['sky blue'])</l>
+<l>stop()</l>
+<c></c>
+<l>dev_set_color ('sky blue')</l>
+<c></c>
+<l>get_drawing_object_params (DrawID, ['row','column','phi','length1','length2'], GenParamValue)</l>
+<l>gen_rectangle2 (Rectangle, GenParamValue[0], GenParamValue[1], GenParamValue[2], \
+                GenParamValue[3], GenParamValue[4])</l>
+<l>detach_drawing_object_from_window (WindowHandle, DrawID)</l>
+<l>stop()</l>
+<c></c>
+<c></c>
+<c>* 去除最高和最低10%的点</c>
+<l>LowPercent := 0.05</l>
+<l>HighPercent := 0.05</l>
+<c>* 对指定区域进行高度滤波</c>
+<l>filter_region_grayval (Image, Rectangle, ImageReduced, Region, \
+                       HighPercent, LowPercent, GrayvalArray, RowArray, ColumnArray)</l>
+<l>ScaleFactor := 0.01</l>
+<c>* 得到测量区域的点云和3d平面</c>
+<l>gen_3d_model_from_points (ImageReduced, ScaleFactor, 1, Object3DModel, Object3DPlane)</l>
+<c>* 得到原图的点云和3d平面</c>
+<l>gen_3d_model_from_points (Image, ScaleFactor, 1, OriginObject3DModel, OriginObject3DPlane)</l>
+<c></c>
+<l>ZArray.at(0) := GrayvalArray</l>
+<c>* 顺序不能错：测量平面、平面3D点云、原图3D点云</c>
+<l>Object3DModels := [Object3DPlane,Object3DModel,OriginObject3DModel] </l>
+<c>* 计算平面度</c>
+<l>cal_3d_object_flatness (Image, ZArray, Object3DModels, ScaleFactor, 1, Height)</l>
+<c></c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="filter_grayval">
+<interface>
+<ic>
+<par name="OriginGrayval" base_type="ctrl" dimension="0"/>
+<par name="HighPercentRemove" base_type="ctrl" dimension="0"/>
+<par name="LowPercentRemove" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="GrayvalOut" base_type="ctrl" dimension="0"/>
+<par name="FilterResultIndices" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* 获取排序后的索引</c>
+<l>tuple_sort_index (OriginGrayval, Indices)</l>
+<c>* 排序</c>
+<l>tuple_sort (OriginGrayval, SortedGrayval)</l>
+<l>GrayvalCount := |OriginGrayval|</l>
+<l>HighRemoveCount := int(GrayvalCount * HighPercentRemove)</l>
+<c>* 移除最高点</c>
+<l>if(HighRemoveCount != 0)</l>
+<l>    tuple_gen_sequence (GrayvalCount - 1 - HighRemoveCount, GrayvalCount - 1,\
+                        1, HighRemoveSequence)</l>
+<l>    tuple_remove (SortedGrayval, HighRemoveSequence, ReducedGrayval)</l>
+<l>else</l>
+<l>    ReducedGrayval := SortedGrayval</l>
+<l>endif</l>
+<c>* 移除最低点</c>
+<l>LowRemoveCount := int(GrayvalCount * LowPercentRemove)</l>
+<l>tuple_gen_sequence (0, LowRemoveCount - 1, 1, LowRemoveSequence)</l>
+<l>tuple_remove (ReducedGrayval, LowRemoveSequence, ReducedGrayval)</l>
+<c>* 从过滤后的tuple中找出最大最小值</c>
+<l>MinGrayval := min(ReducedGrayval)</l>
+<l>MaxGrayval := max(ReducedGrayval)</l>
+<c>* 根据最大最小值从原tuple中过滤，满足条件的ele被设置为1</c>
+<l>tuple_less_elem (OriginGrayval, MinGrayval, LessIndices)</l>
+<l>tuple_greater_elem (OriginGrayval, MaxGrayval, GreaterIndices)</l>
+<c></c>
+<l>tuple_find (LessIndices, 1, LowRemoveIndices)</l>
+<l>tuple_find(GreaterIndices, 1, HighRemoveIndices)</l>
+<c></c>
+<l>tuple_concat (LowRemoveIndices, HighRemoveIndices, RemoveIndices)</l>
+<c>* 从原tuple中将要过滤的数据过滤</c>
+<l>tuple_remove (OriginGrayval, RemoveIndices, GrayvalOut)</l>
+<c></c>
+<l>tuple_gen_sequence (0, GrayvalCount - 1, 1, GenSequence)</l>
+<l>tuple_remove (GenSequence, RemoveIndices, FilterResultIndices)</l>
+<l>return ()</l>
+</body>
+<docu id="filter_grayval">
+<abstract lang="zh_CN">从OriginGrayval中过滤HighPercentRemove比例最高点和LowPercentRemove比例最低点，返回移除后的结果和对应的索引</abstract>
+<parameters>
+<parameter id="FilterResultIndices"/>
+<parameter id="GrayvalOut"/>
+<parameter id="HighPercentRemove"/>
+<parameter id="LowPercentRemove"/>
+<parameter id="OriginGrayval"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="filter_region_grayval">
+<interface>
+<io>
+<par name="OriginImage" base_type="iconic" dimension="0"/>
+<par name="FitRegions" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="ImageReduced" base_type="iconic" dimension="0"/>
+<par name="Region" base_type="iconic" dimension="0"/>
+</oo>
+<ic>
+<par name="HighPercentRemove" base_type="ctrl" dimension="0"/>
+<par name="LowPercentRemove" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="GrayvalArray" base_type="ctrl" dimension="0"/>
+<par name="RowArray" base_type="ctrl" dimension="0"/>
+<par name="ColumnArray" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>union1(FitRegions, RegionUnion)</l>
+<c></c>
+<l>reduce_domain (OriginImage, RegionUnion, ImageReduced)</l>
+<l>get_image_size (ImageReduced, Width, Height)</l>
+<c></c>
+<l>GrayvalArray := []</l>
+<l>RowArray := []</l>
+<l>ColumnArray := []</l>
+<c></c>
+<l>connection (FitRegions, ConnectedRegions)</l>
+<l>count_obj (ConnectedRegions, Number)</l>
+<c></c>
+<l>for Index := 1 to Number by 1</l>
+<l>    select_obj (ConnectedRegions, ObjectSelected, Index)</l>
+<c>    </c>
+<l>    get_region_points (ObjectSelected, Rows, Columns)</l>
+<c>    * 从原图获取深度值</c>
+<l>    get_grayval (OriginImage, Rows, Columns, Grayval)</l>
+<l>    filter_grayval (Grayval, HighPercentRemove, LowPercentRemove, GrayvalOut, FilterResultIndices)</l>
+<c>    </c>
+<l>    tuple_select (Rows, FilterResultIndices, RowsFilter)</l>
+<l>    tuple_select (Columns, FilterResultIndices, ColumnsFilter)</l>
+<c>    </c>
+<l>    tuple_concat (GrayvalArray, GrayvalOut, GrayvalArray)</l>
+<l>    tuple_concat (RowArray, RowsFilter, RowArray)</l>
+<l>    tuple_concat (ColumnArray, ColumnsFilter, ColumnArray)</l>
+<l>endfor</l>
+<c></c>
+<l>gen_image_const (Image, 'uint2', Width, Height)</l>
+<l>gen_region_points (Region, RowArray, ColumnArray)</l>
+<l>reduce_domain (Image, Region, ImageReduced)</l>
+<l>set_grayval (ImageReduced, RowArray, ColumnArray, GrayvalArray)</l>
+<l>return ()</l>
+</body>
+<docu id="filter_region_grayval">
+<parameters>
+<parameter id="ColumnArray"/>
+<parameter id="FitRegions"/>
+<parameter id="GrayvalArray"/>
+<parameter id="HighPercentRemove"/>
+<parameter id="ImageReduced"/>
+<parameter id="LowPercentRemove"/>
+<parameter id="OriginImage"/>
+<parameter id="Region"/>
+<parameter id="RowArray"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="gen_3d_model_from_points">
+<interface>
+<io>
+<par name="ImageZ" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="scaleFactor" base_type="ctrl" dimension="0"/>
+<par name="showModel" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Object3DModel" base_type="ctrl" dimension="0"/>
+<par name="Object3DPlane" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>Image := ImageZ</l>
+<c></c>
+<l>dev_get_window (WindowHandle)</l>
+<l>get_image_size (Image, Width, Height)</l>
+<c>* 用于拟合3D模型</c>
+<l>gen_image_surface_first_order (ImageX, 'real', 1, 0, 0, 0, 0, Width, Height)</l>
+<l>gen_image_surface_first_order (ImageY, 'real', 0, 1, 0, 0, 0, Width, Height)</l>
+<c></c>
+<l>min_max_gray (Image, Image, 0, Min, Max, Range)</l>
+<c></c>
+<l>if(Min &lt; 0)</l>
+<l>    scale_image (Image, Image,1, -Min)</l>
+<l>endif</l>
+<l>min_max_gray (Image, Image, 0, Min, Max, Range)</l>
+<c></c>
+<l>threshold (Image, Region, 1, Max)</l>
+<c></c>
+<l>reduce_domain (Image, Region, ImageReduced)</l>
+<c>* 转成实数类型图片，精度更高</c>
+<l>convert_image_type (ImageReduced, Z, 'real')</l>
+<l>min_max_gray (Z, Z, 0, Min, Max, Range)</l>
+<c>* 对深度值进行缩放，然后z方向平移到原点</c>
+<l>scale_image (Z, ImageScaled, scaleFactor, -scaleFactor * Min)</l>
+<c></c>
+<l>xyz_to_object_model_3d (ImageX, ImageY, ImageScaled, Object3DModel)</l>
+<c></c>
+<c>* 拟合平面参数</c>
+<l>ParFitting := ['primitive_type','fitting_algorithm','output_xyz_mapping']</l>
+<l>ValFitting := ['plane','least_squares_huber','false']</l>
+<c></c>
+<l>fit_primitives_object_model_3d (Object3DModel, ParFitting, ValFitting, Object3DPlane)</l>
+<l>if(showModel == 1)</l>
+<l>    Instructions[0] := ''</l>
+<l>    visualize_object_model_3d (WindowHandle, [Object3DModel,Object3DPlane], [], [],\
+                               ['lut','intensity','disp_pose'], ['hsi','coord_z','true'], [''], '', \
+                               Instructions, PoseOut)        </l>
+<l>endif</l>
+<l>return ()</l>
+</body>
+<docu id="gen_3d_model_from_points">
+<abstract lang="zh_CN">将tif图像生成3d模型和3d平面</abstract>
+<parameters>
+<parameter id="ImageZ"/>
+<parameter id="Object3DModel"/>
+<parameter id="Object3DPlane"/>
+<parameter id="scaleFactor"/>
+<parameter id="showModel"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="cal_3d_object_flatness">
+<interface>
+<io>
+<par name="OriginImage" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="GrayvalArray" base_type="ctrl" dimension="1"/>
+<par name="Object3DModels" base_type="ctrl" dimension="0"/>
+<par name="ZScale" base_type="ctrl" dimension="0"/>
+<par name="IsDebug" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Height" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>Count := GrayvalArray.length()</l>
+<l>ZMin := []</l>
+<l>for Index := 0 to Count - 1 by 1</l>
+<l>    ZMin := [ZMin,min(GrayvalArray.at(Index))]</l>
+<l>endfor</l>
+<c>* 得到原图最低点，使被测区域平面最低点与原图对齐</c>
+<l>min_max_gray (OriginImage, OriginImage, 0, Min, Max, Range)</l>
+<l>threshold(OriginImage, Region, 1, Max)</l>
+<l>reduce_domain (OriginImage, Region, ImageReduced)</l>
+<l>convert_image_type (ImageReduced, Z, 'real')</l>
+<c></c>
+<l>min_max_gray (Z, Z, 0, Min, Max, Range)</l>
+<c></c>
+<l>FinalObject3DModels := []</l>
+<c></c>
+<l>for Index := 0 to Count - 1 by 1</l>
+<l>    d := (ZMin[Index] - Min) * ZScale</l>
+<c>    </c>
+<l>    TransPose := [0,0,d,0,0,0,0]</l>
+<l>    rigid_trans_object_model_3d (Object3DModels[Index], TransPose, ObjectModel3DRigidTrans)</l>
+<l>    FinalObject3DModels := [FinalObject3DModels,ObjectModel3DRigidTrans]</l>
+<l>endfor</l>
+<c>* 将被测区域3D模型与原图最低点对齐</c>
+<l>rigid_trans_object_model_3d (Object3DModels[1], TransPose, ROIObjectModel3D)</l>
+<l>FinalObject3DModels := [FinalObject3DModels,ROIObjectModel3D]</l>
+<c></c>
+<l>visParamName := ['alpha_0','intensity','color_1','color_2']</l>
+<l>visParamValue := [0.7,'coord_z','yellow','orange']</l>
+<c></c>
+<l>dev_get_window (WindowHandle)</l>
+<l>if(IsDebug == 1)</l>
+<l>    visualize_object_model_3d (WindowHandle, [Object3DModels[2],FinalObject3DModels], [], [], \
+                               visParamName,visParamValue, [], [], [], PoseOut)</l>
+<l>endif</l>
+<c>* 主轴对齐</c>
+<c>* 对目标平面快速采样</c>
+<l>sample_object_model_3d (FinalObject3DModels[0], 'fast', 1, [], [], Object3DPlane)</l>
+<c>* 获取基准面的中心力矩</c>
+<l>moments_object_model_3d (Object3DPlane, 'principal_axes', PoseOut)</l>
+<c></c>
+<l>pose_invert (PoseOut, PoseInvert)</l>
+<c></c>
+<l>pose_to_hom_mat3d (PoseInvert, HomMat3D)</l>
+<l>affine_trans_object_model_3d (Object3DPlane, HomMat3D, Object3DPlaneTrans)</l>
+<c></c>
+<l>if(IsDebug == 1)</l>
+<l>    visualize_object_model_3d (WindowHandle, Object3DPlaneTrans, [], [], \
+                               ['intensity_red','intensity_green','intensity_blue','disp_pose'], \
+                               ['coord_x','coord_y','coord_z','true'], '平面调整至0度', \
+                               [], [], PoseOut)  </l>
+<l>endif</l>
+<c></c>
+<l>get_object_model_3d_params (Object3DPlaneTrans, 'point_coord_x', PointX)</l>
+<l>get_object_model_3d_params (Object3DPlaneTrans, 'point_coord_y', PointY)</l>
+<l>get_object_model_3d_params (Object3DPlaneTrans, 'point_coord_z', PointZ)</l>
+<c></c>
+<c>* 提取被测平面上的三个点</c>
+<l>* PointAvg := |PointX| / 5</l>
+<c></c>
+<l>* pX := [PointX[PointAvg * 1],PointX[PointAvg * 2],PointX[PointAvg * 3]]</l>
+<l>* pY := [PointY[PointAvg * 1],PointY[PointAvg * 2],PointY[PointAvg * 3]]</l>
+<l>* pZ := [PointZ[PointAvg * 1],PointZ[PointAvg * 2],PointZ[PointAvg * 3]]</l>
+<c></c>
+<c></c>
+<c>* 向量</c>
+<l>* AB := [pX[1] - pX[0],pY[1] - pY[0],pZ[1] - pZ[0]]</l>
+<l>* AC := [pX[2] - pX[0],pY[2] - pY[0],pZ[2] - pZ[0]]</l>
+<c>* 向量AB、AC的法向量</c>
+<l>* n := [AB[1]* AC[2] - AB[2] * AC[1],AB[2]*AC[0] - AB[0] * AC[2],AB[0] * AC[1] - AB[1] * AC[0]]</l>
+<c>* 平面方程ABC</c>
+<l>* A := n[0]</l>
+<l>* B := n[1]</l>
+<l>* C := n[2]</l>
+<c></c>
+<c>* Ax+By+Cz+D=0  D = -(Ax+By+Cz)</c>
+<l>* D := -(A * pX[0] + B * pY[0] + C * pZ[0])</l>
+<l>get_plane_func (Object3DPlaneTrans, IsDebug, A, B, C, D)</l>
+<c></c>
+<l>affine_trans_object_model_3d (ROIObjectModel3D, HomMat3D, ROIObjectModel3DTrans)</l>
+<c></c>
+<l>get_object_model_3d_params (ROIObjectModel3DTrans, 'point_coord_x', ROIPointX)</l>
+<l>get_object_model_3d_params (ROIObjectModel3DTrans, 'point_coord_y', ROIPointY)</l>
+<l>get_object_model_3d_params (ROIObjectModel3DTrans, 'point_coord_z', ROIPointZ)</l>
+<c></c>
+<l>Distances := []</l>
+<c>* 点(x,y,z)到平面距离方程(Ax+By+Cz+D) / sqrt(A*A + B*B + C*C)</c>
+<l>for Index := 0 to |ROIPointX| - 1 by 1</l>
+<l>    p0 := [ROIPointX[Index],ROIPointY[Index],ROIPointZ[Index]]</l>
+<l>    Distances := [Distances,(A * p0[0] + B * p0[1] + C * p0[2] + D) / (1.0 * sqrt(A * A + B * B + C * C))]</l>
+<l>endfor</l>
+<c>* 可看情况进行滤波，如按百分百去除最高、最低，在获取最高、最低值</c>
+<c></c>
+<l>MinDistance := min(Distances)</l>
+<l>MaxDistance := max(Distances)</l>
+<c></c>
+<l>Theta := MaxDistance - MinDistance</l>
+<l>Height := Theta / ZScale * 0.001</l>
+<c></c>
+<c>*可视化高度差效果</c>
+<l>visParamName := ['lut','alpha_0','intensity','color_1']</l>
+<l>visParamValue := ['hsi',0.7,'coord_z','yellow']</l>
+<c></c>
+<l>Labels := ['','平面度：'+Height+'mm','']</l>
+<l>objs:=[Object3DModels[2],FinalObject3DModels]</l>
+<c></c>
+<l>if(IsDebug)</l>
+<l>    visualize_object_model_3d (WindowHandle, objs, [], [], visParamName, visParamValue,\
+                           '', [Labels], '', PoseOut)</l>
+<l>endif</l>
+<c></c>
+<l>for Index := 0 to |FinalObject3DModels|-1 by 1</l>
+<l>    clear_object_model_3d (FinalObject3DModels[Index])</l>
+<l>endfor</l>
+<l>return ()</l>
+</body>
+<docu id="cal_3d_object_flatness">
+<abstract lang="zh_CN">计算平面度，单位毫米</abstract>
+<parameters>
+<parameter id="GrayvalArray"/>
+<parameter id="Height"/>
+<parameter id="IsDebug"/>
+<parameter id="Object3DModels"/>
+<parameter id="OriginImage"/>
+<parameter id="ZScale"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

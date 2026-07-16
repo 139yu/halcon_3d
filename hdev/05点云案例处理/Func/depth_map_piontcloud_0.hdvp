@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="22.11.0.0">
+<procedure name="depth_map_piontcloud_0">
+<interface>
+<io>
+<par name="ImageZ" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="ScaleFactor" base_type="ctrl" dimension="0"/>
+<par name="bGC" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="ObjectModel3D" base_type="ctrl" dimension="0"/>
+<par name="zScale" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<xb>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</xb>
+<docu id="depth_map_piontcloud_0">
+<parameters>
+<parameter id="ImageZ"/>
+<parameter id="ObjectModel3D"/>
+<parameter id="ScaleFactor"/>
+<parameter id="bGC"/>
+<parameter id="zScale"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

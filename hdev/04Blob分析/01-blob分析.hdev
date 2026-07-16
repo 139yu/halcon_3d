@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>read_object_model_3d ('UDisk.ply', 'm', [], [], ObjectModel3D, Status)</l>
+<l>dev_get_window (WindowHandle)</l>
+<c>* lut：指定颜色查找表，配合color_attrib使用</c>
+<c>* disp_pose：是否显示模型的坐标系</c>
+<c>* color_attrib：对哪个坐标系进行着色，一般z轴才有高度，选择z轴</c>
+<l>GenParamName := ['lut','disp_pose','color_attrib']</l>
+<l>GenParamValue := ['color2','true','coord_z']</l>
+<c></c>
+<l>visualize_object_model_3d (WindowHandle, ObjectModel3D, [], [],\
+                           GenParamName, GenParamValue, [], [], [], PoseOut)</l>
+<c></c>
+<l>smooth_object_model_3d (ObjectModel3D, 'mls', [], [], SmoothObjectModel3D)</l>
+<l>visualize_object_model_3d (WindowHandle, SmoothObjectModel3D, [], [],\
+                           GenParamName, GenParamValue, [], [], [], PoseOut)</l>
+<c>***4、按照坐标进行点云筛选</c>
+<l>get_object_model_3d_params (SmoothObjectModel3D, 'point_coord_x', XValue)</l>
+<l>get_object_model_3d_params (SmoothObjectModel3D, 'point_coord_y', YValue)</l>
+<l>get_object_model_3d_params (SmoothObjectModel3D, 'point_coord_z', ZValue)</l>
+<c>** 提取点云数据在X，Y，Z轴上的范围值</c>
+<c>**tuple_min (XValue, Min)</c>
+<c>**tuple_max (XValue, Max)</c>
+<l>XMin := min(XValue)</l>
+<l>XMax := max(XValue)</l>
+<c></c>
+<l>YMin := min(YValue)</l>
+<l>YMax := max(YValue)</l>
+<c></c>
+<l>ZMin := min(ZValue)</l>
+<l>ZMax := max(ZValue)</l>
+<c></c>
+<l>SelectName :=['point_coord_x','point_coord_y','point_coord_z']</l>
+<l>SelectMinValue := [-5, 10, 4]</l>
+<l>SelectMaxValue := [12, 55, 8]</l>
+<l>select_points_object_model_3d (SmoothObjectModel3D, SelectName, SelectMinValue,\
+                               SelectMaxValue, ObjectModel3DThresholded)</l>
+<l>visualize_object_model_3d (WindowHandle, ObjectModel3DThresholded, [], [], \
+                           GenParamName, GenParamValue, [], [], [], PoseOut)</l>
+<c>* 根据欧式距离求连通域</c>
+<l>connection_object_model_3d (ObjectModel3DThresholded, 'distance_3d', 0.2, ObjectModel3DConnected)</l>
+<c></c>
+<l>get_object_model_3d_params (ObjectModel3DConnected, 'num_points', PointCount)</l>
+<c>* 根据点云数量筛选</c>
+<l>select_object_model_3d (ObjectModel3DConnected, 'num_points', 'and', 10000, 360000, ObjectModel3DSelected)</l>
+<c></c>
+<l>visualize_object_model_3d (WindowHandle, ObjectModel3DSelected, [], [], \
+                           GenParamName, GenParamValue, [], [], [], PoseOut)</l>
+<c></c>
+<c>* 3D对象的数据采样操作（粗略、精准）</c>
+<c>* fast：快速采样；accurate_use_normals：基于法向量的精准采样</c>
+<l>sample_object_model_3d (ObjectModel3DSelected, 'accurate_use_normals', 0.5, [], [], SampledObjectModel3D)</l>
+<c>* 计算模型质心位姿</c>
+<l>moments_object_model_3d (SampledObjectModel3D, 'principal_axes', Moments)</l>
+<c>* 必须反转</c>
+<l>pose_invert (Moments, PoseInvert)</l>
+<c>* 将位姿转为3D矩阵</c>
+<l>* pose_to_hom_mat3d (PoseInvert, HomMat3D)</l>
+<c>* 对模型使用反转后的位姿</c>
+<l>rigid_trans_object_model_3d (SampledObjectModel3D, PoseInvert, ObjectModel3DRigidTrans)</l>
+<c></c>
+<l>visualize_object_model_3d (WindowHandle, ObjectModel3DRigidTrans, [], [], \
+                           GenParamName, GenParamValue, [], [], [], PoseOut)</l>
+<c>* 计算3D模型的表面法向量</c>
+<l>surface_normals_object_model_3d (ObjectModel3DRigidTrans, 'mls', [], [], ObjectModel3DNormals)</l>
+<c>* 把采样点进行网格化处理（3D拟合重建）</c>
+<l>triangulate_object_model_3d (ObjectModel3DNormals, 'greedy', [], [], \
+                             TriangulatedObjectModel3D, Information)</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>

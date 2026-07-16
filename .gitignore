@@ -1,0 +1,40 @@
+# ===== HALCON / HDevelop =====
+# HDevelop 自动备份文件
+*.hdev~
+*.hdvp~
+*.hdpl~
+*.bak
+# HDevelop 崩溃恢复 / 自动保存文件
+*.hdev_autosave
+*.autosave
+
+# ===== 运行产物（按需保留示例数据，仅忽略临时输出）=====
+# 临时导出的结果目录（如有）
+output/
+result/
+temp/
+tmp/
+
+# ===== Windows 系统文件 =====
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ===== macOS 系统文件 =====
+.DS_Store
+
+# ===== 编辑器 / IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ===== Claude Code 本地配置 =====
+.claude/settings.local.json
+
+# ===== 压缩包 / 日志 =====
+*.log
+*.zip
+*.rar
+*.7z

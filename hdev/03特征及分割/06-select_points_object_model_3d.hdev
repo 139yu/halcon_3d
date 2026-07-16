@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<c>* **************************************************************</c>
+<c>* This example program shows how to remove parts of a 3D object</c>
+<c>* model based on thresholds that are applied to the model's</c>
+<c>* attributes with select_points_object_model_3d.</c>
+<c>* </c>
+<c>* First example:</c>
+<c>* </c>
+<c>* As set of two threshold values (ThreshMinX and ThreshMaxX) is</c>
+<c>* defined and applied to the x-coordinates of all the points of</c>
+<c>* the 3d object model.</c>
+<c>* All points fulfilling the condition</c>
+<c>*     ThreshMinX &lt;= x &lt;= ThreshMaxX</c>
+<c>* are kept in the resulting 3d object model. The other points</c>
+<c>* are removed from the resulting 3d object model.</c>
+<c>* </c>
+<c>* Second example:</c>
+<c>* </c>
+<c>* Only points that fulfill a certain criteria (distance to z-axis)</c>
+<c>* are selected. This part of the example shows how to use</c>
+<c>* arbitrary tuples as basis for the selection.</c>
+<c>* **************************************************************</c>
+<c>* </c>
+<c>* Prepare visualization.</c>
+<l>dev_update_off ()</l>
+<l>dev_close_window ()</l>
+<l>dev_open_window (0, 0, 640, 480, 'gray', WindowHandle)</l>
+<l>set_display_font (WindowHandle, 16, 'mono', 'true', 'false')</l>
+<c>* </c>
+<c>* **************************************************************</c>
+<c>* First Example</c>
+<c>* **************************************************************</c>
+<c>* </c>
+<c>* Read 3D object model.</c>
+<l>read_object_model_3d ('pipe_joint', 'm', [], [], ObjectModel3D, Status)</l>
+<c>* </c>
+<l>gen_cam_par_area_scan_division (0.01, 0, 7e-6, 7e-6, 384, 256, 768, 512, CamParam)</l>
+<l>create_pose (-4.4e-005, -2.9e-003, 1.8e-1, 289.0, 0.8, 12.5, 'Rp+T', 'gba', 'point', Pose)</l>
+<l>GenParamName := ['color_0', 'alpha_0', 'disp_pose_0']</l>
+<l>GenParamValue := ['green', .3, 'true']</l>
+<l>GenParamName := [GenParamName,'color_1', 'alpha_1']</l>
+<l>GenParamValue := [GenParamValue,'red', .3]</l>
+<l>GenParamName := [GenParamName,'color_2', 'alpha_2', 'attribute_2']</l>
+<l>GenParamValue := [GenParamValue,'yellow', .2, 'faces']</l>
+<l>GenParamName := [GenParamName,'color_3', 'alpha_3', 'attribute_3']</l>
+<l>GenParamValue := [GenParamValue,'blue', 1.0, 'points']</l>
+<c>* </c>
+<c>* Define threshold values on the X, Y and Z-coordinates.</c>
+<c>* Those values will be applied to the 3D object model.</c>
+<l>ThreshMinX := -15.0e-3</l>
+<l>ThreshMaxX := 15.0e-3</l>
+<c>* </c>
+<c>* Generate 3D object models in order to visualize the position</c>
+<c>* of the thresholds.</c>
+<c>* 创建两个平面，绕y轴旋转90°</c>
+<l>create_pose (ThreshMinX, 0.0, 0.0, 0, 90, 0, 'Rp+T', 'gba', 'point', PosePlaneMinX)</l>
+<l>create_pose (ThreshMaxX, 0.0, 0.0, 0, 90, 0, 'Rp+T', 'gba', 'point', PosePlaneMaxX)</l>
+<l>gen_plane_object_model_3d (PosePlaneMinX, [25.0e-3, 25.0e-3, -25.0e-3, -25.0e-3], [25.0e-3, -25.0e-3, -25.0e-3, 25.0e-3], ObjectModel3DMinX)</l>
+<l>gen_plane_object_model_3d (PosePlaneMaxX, [25.0e-3, 25.0e-3, -25.0e-3, -25.0e-3], [25.0e-3, -25.0e-3, -25.0e-3, 25.0e-3], ObjectModel3DMaxX)</l>
+<c>* </c>
+<c>* Visualize the scene.</c>
+<l>Title := 'The x-coordinates of the 3d points will be thresholded'</l>
+<l>Information := ['Apply threshold: ',(ThreshMinX * 1e3)$'3.1f' + ' mm &lt;= x &lt;= ' + (ThreshMaxX * 1e3)$'3.1f' + ' mm']</l>
+<l>visualize_object_model_3d (WindowHandle, [ObjectModel3DMinX,ObjectModel3DMaxX,ObjectModel3D,ObjectModel3D], CamParam, Pose, GenParamName, GenParamValue, Title, [], Information, Pose)</l>
+<c>* </c>
+<c>* Apply a threshold to the x-coordinates, in order to select</c>
+<c>* points such that ThreshMinX &lt;= x &lt;= ThreshMaxX.</c>
+<c>* 选择在指定x轴范围内的点</c>
+<l>select_points_object_model_3d (ObjectModel3D, 'point_coord_x', ThreshMinX, ThreshMaxX, ObjectModel3DThresholded)</l>
+<c>* </c>
+<l>Title := 'Result of the threshold operation on the x-coordinates'</l>
+<l>Information := ['Applied threshold: ',(ThreshMinX * 1e3)$'3.1f' + ' mm &lt;= x &lt;= ' + (ThreshMaxX * 1e3)$'3.1f' + ' mm']</l>
+<l>get_object_model_3d_params (ObjectModel3DThresholded, 'num_points', NumPoints)</l>
+<l>if (NumPoints &gt; 0)</l>
+<l>    visualize_object_model_3d (WindowHandle, [ObjectModel3DMinX,ObjectModel3DMaxX,ObjectModel3DThresholded,ObjectModel3DThresholded], CamParam, Pose, GenParamName, GenParamValue, Title, [], Information, Pose)</l>
+<l>else</l>
+<l>    Message := 'The 3d object model contains no more points.'</l>
+<l>    disp_message (WindowHandle, Message, 'window', 12, 12, 'white', 'false')</l>
+<l>    disp_continue_message (WindowHandle, 'black', 'true')</l>
+<l>    stop ()</l>
+<l>endif</l>
+<c>* </c>
+<c>* **************************************************************</c>
+<c>* Second Example</c>
+<c>* **************************************************************</c>
+<c>* </c>
+<l>read_object_model_3d ('car_rim', 'm', [], [], ObjectModel3D, Status)</l>
+<l>max_diameter_object_model_3d (ObjectModel3D, Diameter)</l>
+<c>* </c>
+<l>gen_cam_par_area_scan_division (0.01, 0, 7e-6, 7e-6, 384, 256, 768, 512, CamParam)</l>
+<l>GenParamName := ['color_0', 'alpha_0', 'disp_pose_0']</l>
+<l>GenParamValue := ['green', .3, 'true']</l>
+<l>GenParamName := [GenParamName,'color_1', 'alpha_1']</l>
+<l>GenParamValue := [GenParamValue,'red', .3]</l>
+<l>GenParamName := [GenParamName,'color_2', 'alpha_2', 'attribute_2']</l>
+<l>GenParamValue := [GenParamValue,'yellow', .2, 'faces']</l>
+<l>GenParamName := [GenParamName,'color_3', 'alpha_3', 'attribute_3']</l>
+<l>GenParamValue := [GenParamValue,'blue', 1.0, 'points']</l>
+<c>* </c>
+<c>* Generate 3D object models in order to visualize the position</c>
+<c>* of the thresholding planes.</c>
+<l>MinAngle := -20</l>
+<l>MaxAngle := 55</l>
+<l>create_pose (0, 0.0, 0.0, 90, MinAngle, 0, 'Rp+T', 'gba', 'point', PosePlane1)</l>
+<l>create_pose (0, 0.0, 0.0, 90, MaxAngle, 0, 'Rp+T', 'gba', 'point', PosePlane2)</l>
+<l>gen_plane_object_model_3d (PosePlane1, [0, 0, 1, 1] * Diameter, [-1, 1, 1, -1] * Diameter, ObjectModel3DBorder1)</l>
+<l>gen_plane_object_model_3d (PosePlane2, [0, 0, 1, 1] * Diameter, [-1, 1, 1, -1] * Diameter, ObjectModel3DBorder2)</l>
+<c>* </c>
+<l>Title := 'Only the points between the two planes shall be retained'</l>
+<l>Information := []</l>
+<l>visualize_object_model_3d (WindowHandle, [ObjectModel3DBorder1,ObjectModel3DBorder2,ObjectModel3D,ObjectModel3D], CamParam, [], GenParamName, GenParamValue, Title, [], Information, Pose)</l>
+<c>* </c>
+<c>* Apply a threshold to the points such that they are between the two planes</c>
+<c>* (one the positive side of plane 1, on the negative side of plane 2).</c>
+<l>get_object_model_3d_params (ObjectModel3D, 'point_coord_x', PX)</l>
+<l>get_object_model_3d_params (ObjectModel3D, 'point_coord_y', PY)</l>
+<l>Angle := deg(atan2(PY,PX))</l>
+<c>* Points such that MinAngle &lt;= Angle &lt;= MaxAngle.</c>
+<l>select_points_object_model_3d (ObjectModel3D, Angle, MinAngle, MaxAngle, ObjectModel3DThresholded)</l>
+<c>* </c>
+<l>Title := ['Result of selecting points based on their angle', 'in the x-y-plane']</l>
+<l>Information := []</l>
+<l>get_object_model_3d_params (ObjectModel3DThresholded, 'num_points', NumPoints)</l>
+<l>if (NumPoints &gt; 0)</l>
+<l>    visualize_object_model_3d (WindowHandle, [ObjectModel3DBorder1,ObjectModel3DBorder2,ObjectModel3DThresholded,ObjectModel3DThresholded], CamParam, Pose, GenParamName, GenParamValue, Title, [], Information, Pose)</l>
+<l>else</l>
+<l>    Message := 'The 3d object model contains no more points.'</l>
+<l>    disp_message (WindowHandle, Message, 'window', 12, 12, 'white', 'false')</l>
+<l>    disp_continue_message (WindowHandle, 'black', 'true')</l>
+<l>    stop ()</l>
+<l>endif</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>

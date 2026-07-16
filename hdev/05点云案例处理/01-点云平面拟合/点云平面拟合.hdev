@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<c>* 读取图像 imageReal。</c>
+<c>* 定义分辨率 xResolution、yResolution 和 zResolution，以及缩放因子 ScaleFactor。</c>
+<c>* 创建窗口并在窗口中绘制三个不同颜色的矩形采样区域。</c>
+<c>* 提取各个采样区域的参数，并进行灰度值过滤处理。</c>
+<c>* 根据灰度值过滤后的结果，生成新的图像和区域。</c>
+<c>* 进行平面拟合，并计算平面拟合区域的平均高度。</c>
+<c>* 将处理后的图像转换为点云数据，并进行刚性变换。</c>
+<c>* 最后对处理后的数据进行可视化展示。</c>
+<c></c>
+<l>read_image(ImageReal,'./test.tif')</l>
+<c>* 缩放比例</c>
+<l>xResolution := 0.06</l>
+<l>yResolution := 0.06</l>
+<l>zResolution := 0.001</l>
+<l>ScaleFactor := [xResolution,yResolution,zResolution]</l>
+<c>* 移除最小10%的点云和最大%10的点云，求其余深度值的平均值</c>
+<l>rateLowRemove := 0.1</l>
+<l>rateHighRemove := 0.1</l>
+<c></c>
+<l>dev_get_window (WindowHandle)</l>
+<c></c>
+<l>dev_display (ImageReal)</l>
+<c>* 采样区1</c>
+<l>create_drawing_object_rectangle2 (300, 120, rad(90), 30, 20, DrawID)</l>
+<l>set_drawing_object_params (DrawID, ['color','line_width'], ['red',1])</l>
+<l>attach_drawing_object_to_window (WindowHandle, DrawID)</l>
+<c></c>
+<c>* 采样区2</c>
+<l>create_drawing_object_rectangle2 (300, 180, rad(90), 30, 20, DrawID1)</l>
+<l>set_drawing_object_params (DrawID1, ['color','line_width'], ['red',1])</l>
+<l>attach_drawing_object_to_window (WindowHandle, DrawID1)</l>
+<c></c>
+<c>* 采样区3</c>
+<l>create_drawing_object_rectangle2 (400, 120, rad(90), 30, 20, DrawID2)</l>
+<l>set_drawing_object_params (DrawID2, ['color','line_width'], ['red',1])</l>
+<l>attach_drawing_object_to_window (WindowHandle, DrawID2)</l>
+<c></c>
+<l>stop()</l>
+<c></c>
+<l>dev_set_color ('red')</l>
+<c></c>
+<l>get_drawing_object_params (DrawID, ['row','column','phi','length1','length2'], ROI1ParamValue)</l>
+<l>gen_rectangle2 (Rectangle1, ROI1ParamValue[0],  ROI1ParamValue[1], \
+                ROI1ParamValue[2],  ROI1ParamValue[3],  ROI1ParamValue[4])</l>
+<c></c>
+<l>dev_set_color ('green')</l>
+<c></c>
+<l>get_drawing_object_params (DrawID1, ['row','column','phi','length1','length2'], ROI2ParamValue)</l>
+<l>gen_rectangle2 (Rectangle2, ROI2ParamValue[0],  ROI2ParamValue[1], \
+                ROI2ParamValue[2],  ROI2ParamValue[3],  ROI2ParamValue[4])</l>
+<c></c>
+<l>dev_set_color ('yellow')</l>
+<c></c>
+<l>get_drawing_object_params (DrawID2, ['row','column','phi','length1','length2'], ROI3ParamValue)</l>
+<l>gen_rectangle2 (Rectangle3, ROI3ParamValue[0],  ROI3ParamValue[1], \
+                ROI3ParamValue[2],  ROI3ParamValue[3],  ROI3ParamValue[4])</l>
+<c></c>
+<l>detach_drawing_object_from_window (WindowHandle, DrawID1)</l>
+<l>detach_drawing_object_from_window (WindowHandle, DrawID2)</l>
+<l>detach_drawing_object_from_window (WindowHandle, DrawID)</l>
+<l>stop()</l>
+<c></c>
+<l>gen_empty_obj (fit_regions)</l>
+<c></c>
+<l>concat_obj (Rectangle1, Rectangle2, fit_regions)</l>
+<l>concat_obj (fit_regions, Rectangle3, fit_regions)</l>
+<c>* 合并成一个对象</c>
+<l>union1 (fit_regions, RegionUnion)</l>
+<c></c>
+<l>reduce_domain (ImageReal, RegionUnion, ImageReduced)</l>
+<c></c>
+<l>get_image_size (ImageReduced, Width, Height)</l>
+<c></c>
+<l>grayArray := []</l>
+<l>RowArray := []</l>
+<l>ColumnArray := []</l>
+<c></c>
+<l>connection (RegionUnion, ConnectedRegions)</l>
+<c></c>
+<l>count_obj (ConnectedRegions, Number)</l>
+<c></c>
+<c>* 把每个区域拿出来，对图像深度值做对应处理，消除异常值的影响</c>
+<c>* 去除最低10%：背景噪声、阴影区域、空洞/缺失数据、异常低值测量点</c>
+<c>* 去除最高10%：反射亮点、灰尘/污染物、异常高值测量点、表面瑕疵/凸起</c>
+<l>for I := 1  to Number by 1</l>
+<l>    select_obj(ConnectedRegions, ObjectSelected, I)</l>
+<l>    smallest_rectangle2 (ObjectSelected, Row, Column, Phi, Length1, Length2)</l>
+<c>    </c>
+<l>    get_region_points (ObjectSelected, Rows, Columns)</l>
+<c>    * 获取当前区域每个点的深度值</c>
+<l>    get_grayval (ImageReal, Rows, Columns, Grayval)</l>
+<c>    * 得到对深度值进行排序后的索引</c>
+<l>    tuple_sort_index (Grayval, Index)</l>
+<c>    * 对深度值进行排序</c>
+<l>    tuple_sort (Grayval, graySorted)</l>
+<c>    </c>
+<l>    grayvalOutIndex := int(|graySorted| * rateLowRemove)</l>
+<c>    </c>
+<l>    n := int(|graySorted| * rateHighRemove)</l>
+<c>    </c>
+<l>    if(n != 0)</l>
+<c>        * 移除最高深度值</c>
+<l>        tuple_gen_sequence (|graySorted| - 1 - n, |graySorted| - 1, 1, Sequence)</l>
+<l>        tuple_remove (graySorted, Sequence, grayReduced)</l>
+<l>    else</l>
+<l>        grayReduced := graySorted</l>
+<l>    endif</l>
+<c>    * 移除最低</c>
+<l>    tuple_gen_sequence (0,grayvalOutIndex - 1, 1, Sequence)</l>
+<l>    tuple_remove (grayReduced, Sequence, grayReduced)</l>
+<c>    * 得到最大最小深度阈值</c>
+<l>    minGrayval := grayReduced[0]</l>
+<l>    maxGrayval := grayReduced[|grayReduced| - 1]</l>
+<c>    </c>
+<c>    * 未排序的深度序列，中找出灰度值小于等于minGrayval和大于等于maxGrayval的序列，标识为1</c>
+<l>    tuple_less_elem (Grayval, minGrayval, Lesseq)</l>
+<c>    </c>
+<l>    tuple_greater_elem (Grayval, maxGrayval, Greatereq)</l>
+<c>    </c>
+<c>    * 找出上述序列下标</c>
+<l>    tuple_find (Lesseq, 1, LesseqIndies)</l>
+<l>    tuple_find (Greatereq, 1,GreaterIndies)</l>
+<c>    * 将要移除的序列合并</c>
+<l>    tuple_concat (LesseqIndies, GreaterIndies, Concat)</l>
+<c>    * 将它们移除</c>
+<l>    tuple_remove(Grayval, Concat, GrayvalOut)</l>
+<l>    tuple_gen_sequence (0, |Index| - 1, 1, SequenceGray)</l>
+<c>    * 得到一个移除了最大、最小深度的序列</c>
+<l>    tuple_remove (SequenceGray, Concat, GrayvalFilterIndex)</l>
+<c>    </c>
+<c>    * 选中过滤后的行、列、灰度值</c>
+<l>    tuple_select (Rows, GrayvalFilterIndex,RowFilter)</l>
+<l>    tuple_select (Columns, GrayvalFilterIndex,ColumnFilter)</l>
+<c>    </c>
+<l>    tuple_concat (grayArray, GrayvalOut, grayArray)</l>
+<l>    tuple_concat (RowArray, RowFilter, RowArray)</l>
+<l>    tuple_concat (ColumnArray, ColumnFilter, ColumnArray)</l>
+<c></c>
+<l>endfor</l>
+<l>stop()</l>
+<l>gen_image_const (Image, 'uint2', Width, Height)</l>
+<c></c>
+<l>gen_region_points (Region, RowArray, ColumnArray)</l>
+<c></c>
+<l>reduce_domain (Image, Region, ImageReduced1)</l>
+<c>* 给指定位置设置深度信息</c>
+<l>set_grayval (ImageReduced1,  RowArray, ColumnArray, grayArray)</l>
+<c>* 计算平面拟合区域的平均强度与方差</c>
+<l>intensity (ImageReduced1, ImageReduced1, Mean, Deviation)</l>
+<c></c>
+<l>area_center (Region, Area, RowFit, ColumnFit)</l>
+<c>* 获取要拟合的平面数据信息</c>
+<l>fit_surface_first_order (Region, ImageReduced1, 'tukey', 5, 2, Alpha, Beta, Gamma)</l>
+<c>* 根据平面数据信息拟合平面图像</c>
+<l>gen_image_surface_first_order (ImageSurface, 'real', Alpha, Beta, Gamma, RowFit, ColumnFit, Width, Height)</l>
+<c></c>
+<l>depth_map_piontcloud (ImageReduced1, ScaleFactor, 1, 1, ObjectModel3D, ObjectModelPlane, zScale1)</l>
+<c></c>
+<l>depth_map_piontcloud (ImageReal, ScaleFactor, 1, 0, ObjectModel3D1, ObjectModelPlane1, zScale2)</l>
+<c>* 计算整体点云的最大最小高度</c>
+<l>min_max_gray (ImageReal, ImageReal, 0, Min, Max, Range)</l>
+<c>* 深度图像无效数据通常标记为0，所以从1开始</c>
+<l>threshold (ImageReal, Region, 1, Max)</l>
+<c></c>
+<l>reduce_domain (ImageReal, Region, ImageReduced)</l>
+<c></c>
+<l>convert_image_type (ImageReduced, Z, 'real')</l>
+<c></c>
+<l>min_max_gray (Z, Z, 0, Min, Max, Range)</l>
+<c></c>
+<c>* 将过滤后图像点云于原始图像点云对齐</c>
+<l>d := (Mean - Min) * zScale1</l>
+<c></c>
+<l>TransPose := [0,0,d,0,0,0,0]</l>
+<c></c>
+<l>rigid_trans_object_model_3d (ObjectModel3D, TransPose, _ObjectModel3D)</l>
+<c></c>
+<l>rigid_trans_object_model_3d (ObjectModelPlane, TransPose, _ObjectModelPlane)</l>
+<c></c>
+<l>visParamName := ['intensity_1','color_0','color_2','alpha_0']</l>
+<l>visParamValue := ['coord_z','red','yellow',0.5]</l>
+<c></c>
+<l>visualize_object_model_3d (WindowHandle, [_ObjectModel3D,ObjectModel3D1,_ObjectModelPlane], \
+                           [], [], visParamName, visParamValue, [], [], [], PoseOut)</l>
+<l>stop()</l>
+<c></c>
+<l>clear_object_model_3d (_ObjectModel3D)</l>
+<l>clear_object_model_3d (ObjectModel3D1)</l>
+<l>clear_object_model_3d (_ObjectModelPlane)</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>

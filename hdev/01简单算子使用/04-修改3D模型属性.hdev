@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>dev_open_window (0, 0, 512, 512, 'black', WindowHandle)</l>
+<c></c>
+<l>set_display_font (WindowHandle, 16, 'mono', 'true', 'false')</l>
+<c></c>
+<l>create_pose (0,0,0, 0,0,0, 'Rp+T', 'gba', 'point', Pose)</l>
+<c>* 设置显示参数</c>
+<l>VisualParamNames := ['point_size','disp_lines','attribute_0','color_0']</l>
+<c></c>
+<l>VisualParamValues := [10,'true','points','yellow']</l>
+<c></c>
+<l>gen_empty_object_model_3d (ObjectModel3D)</l>
+<c></c>
+<l>Offset := 0</l>
+<c>* 定义立方体的9个点，水平面9个，四个角+一个中心点</c>
+<l>PointCoordX := [0,0.5,1,1,0,0,0,1,1] - Offset</l>
+<l>PointCoordY := [0,0.5,0,1,1,0,1,1,0] - Offset</l>
+<l>PointCoordZ := [0,0,0,0,0,1,1,1,1] - Offset</l>
+<c>* 在指定的模型上进行修改</c>
+<l>set_object_model_3d_attrib_mod (ObjectModel3D, ['point_coord_x','point_coord_y','point_coord_z'], [], \
+                                [PointCoordX,PointCoordY,PointCoordZ])</l>
+<c>* 创建新的模型进行修改，保留原来的模型</c>
+<c>* set_object_model_3d_attrib</c>
+<l>visualize_object_model_3d (WindowHandle, ObjectModel3D, [], Pose, VisualParamNames, VisualParamValues, 'define points', [], [], PoseOut)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>gen_plane_object_model_3d ([0,0,0,0,0,0,0], [-0.5,0.5,0.5,-0.5], [0.5,0.5,-0.5,-0.5], Model3DPlane)</l>
+<c></c>
+<l>distance_object_model_3d (ObjectModel3D, Model3DPlane, Pose, 0, [], [])</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>

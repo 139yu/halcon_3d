@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.11.1.0">
+<procedure name="depth_image_to_pointcloud">
+<interface>
+<io>
+<par name="DepthImage" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="Scale" base_type="ctrl" dimension="0"/>
+<par name="IsDebug" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="ObjectModel3D" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>get_image_size (DepthImage, Width, Height)</l>
+<c>* 以列号为x、行号为y生成3d模型</c>
+<l>gen_image_surface_first_order (ImageX, 'real', 0, 1, 0, 0, 0, Width, Height)</l>
+<l>gen_image_surface_first_order (ImageY, 'real', 1, 0, 0, 0, 0, Width, Height)</l>
+<c></c>
+<c></c>
+<l>min_max_gray (DepthImage, DepthImage, 0, Min, Max, Range)</l>
+<c>* 平移图像， 相机（如线激光）输出的原始数据是相对于传感器参考面的。</c>
+<c>*如果物体离镜头较远，其高度值可能是负数。为了进行后续的测量（比如计算物体真实高度），通常先将最低点设为参考零点。</c>
+<l>if(Min &lt; 0)</l>
+<l>    scale_image(DepthImage, DepthImage, 1, -Min)</l>
+<l>endif</l>
+<c>* 重新得到平移后的图像灰度阈值</c>
+<l>min_max_gray (DepthImage, DepthImage, 0, Min, Max, Range)</l>
+<l>threshold (DepthImage, Region, 1, Max)</l>
+<l>reduce_domain (DepthImage, Region, ImageReduced)</l>
+<c>* 转成实数图,实数图能储存更大的范围</c>
+<l>convert_image_type (ImageReduced, ImageZ, 'real')</l>
+<l>min_max_gray (ImageZ, ImageZ, 0, Min, Max, Range)</l>
+<c>* 对深度值缩放平移，再平移到z方向为0的基准面</c>
+<l>scale_image (ImageZ, ScaleImageZ, Scale, -Scale * Min)</l>
+<c></c>
+<l>xyz_to_object_model_3d (ImageX, ImageY, ScaleImageZ, ObjectModel3D)</l>
+<c></c>
+<l>if(IsDebug)</l>
+<l>    Infos[0] := ''</l>
+<c>    * 'intensity': 'coord_z'：按高度着色。模型每个点的颜色由它的 Z 坐标决定。</c>
+<c>    * lut': 'hsi'：使用 HSI（彩虹色）颜色查找表。通常 Z 轴最高的地方显示为红色，最低的地方显示为蓝色。</c>
+<l>    dev_get_window (WindowHandle)</l>
+<l>    visualize_object_model_3d (WindowHandle, ObjectModel3D, [], [], ['lut','intensity'], ['sqrt','coord_z'], [], [], [], PoseOut)</l>
+<l>else</l>
+<l>    Infos[0] := ''</l>
+<l>    get_domain (ScaleImageZ, Domain)</l>
+<l>    get_region_points (Domain, Rows, Columns)</l>
+<l>    get_grayval (ScaleImageZ, Rows, Columns, Grayval)</l>
+<c>    * 将原始图像的灰度值存入了 &amp;amplitude 属性。</c>
+<l>    set_object_model_3d_attrib_mod (ObjectModel3D, '&amp;amplitude', 'points', Grayval)</l>
+<l>endif</l>
+<l>return ()</l>
+</body>
+<docu id="depth_image_to_pointcloud">
+<parameters>
+<parameter id="DepthImage"/>
+<parameter id="IsDebug"/>
+<parameter id="ObjectModel3D"/>
+<parameter id="Scale"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

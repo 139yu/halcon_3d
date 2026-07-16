@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="22.11.0.0">
+<procedure name="data_filter_keep_order">
+<interface>
+<ic>
+<par name="grayval" base_type="ctrl" dimension="0"/>
+<par name="rateLowRemove" base_type="ctrl" dimension="0"/>
+<par name="rateHighRemove" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="grayvalOut" base_type="ctrl" dimension="0"/>
+<par name="grayvalOutIndex" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<xb>ij5NH8GeepS7wvX4LYUaOo8QZXdTR+VEz/ny7RkMIEXTduin27jX4ITkLdC+6Lt7rbO5meABiDHqzFkLe4aZ69MokRGgYLBth32TEiOKVeCD3By0KIay8nZjnS7L+OEhnVGiR2vNGwQNI+CVLnOHNYwxQIpsKjQU1NbNNPIX3B4N3JiyOv4XPqIl5LK005fBzdJlBYwnXBuw4yHaYYt35Y2ABGSggOy1F+FgLV96Q0LWLUaZECH2Wd3lgo6BDdhJne4DYFMzKxBvJVLgVoATkStJEzrE3MjpZbi1neJ4qBH1cz+jRC4RjSDX7eMjSL6htqwfkI/iUuwoFyD/NX5EUSEPngBQYHSXRwkknbX6SG1ynX6XGWo2fcAJBBPGGcBJtbZbFgTYSwGMeBLSSZMEEmJsiCJHP7+A+Bi7CKJh/9JcRXWXxa4xNa4HGUbqJXzjOc9/9AsQ++tj8uaV2mVoKIc3pbtcQ/owvJ31cXIxNgQHP65oXdPMheHJMBCnZgbuClPR5P+Dhbiz8tcqXD2W/+vcNMl+wG74odMftIjc1DwkLGtGrfI9IDWkvkkQUBr9ekg+0bmReIQVI5/F7x+TB0wN3XHsqFvIgrXU27QDdD0kznGPe7rZPiwxBg3nzSZsy5IR7DnZnykdGv4588TB3L8hpCSELIVn5yDLvlKnQywLGAljMhWxkwxWGjbryi7qUNK0fpoubQAZSWgWeG65uswKZWYojbf/aOn6QeXevZ760LPcYMRUYHG1Gtl6ohfbdLPmWDtLnPO03DrYOBCNToSMTkWVCLrtGwqBV2GefMKb3muDmytoa8IUHdqXYMN4Rt/T/WEMXWicU20ODjT3vpzKAbH0WG2blvLt2+jwLZodsOGB/7NPEx0qvzpXj7Die7corZ9Plcf0Y737/P7RqnhfoKGiXXdvJc5mWP/A9ySN2qEw2Ob8zb+yM7fog7BuKycobx1JDWJm4ziwYcIOGB3YyCEARloRJRfyC0ZsbHUfNmOUhipQ1IwNj++UW1Au9g9cZLuJfW71PMUh4kXn+DjtNYq/y+1olbC86AdIZZvY27eTj9Gn7btxLnEy/2xP1wUn/tNSeq9ln3G5vwV/prhARmAnXWDG8pPILxOWlddiOOGVLQbegjm2yKIhY+uHpkt7ZZ8MuiQCqXL34YZZlHF6/pv0n9Ix3S5pKhr/J8WFxnuVlT2BfyN3s+Nowd/dJo4Wyn7lotN6N/oXU07KmIwfQjlm5bC+4QLiuEcEIMz4DANZVbZnTNwCT4dqYXOpWr9rlnoJQ8N3t8V+JgDfaQ</xb>
+<docu id="data_filter_keep_order">
+<parameters>
+<parameter id="grayval"/>
+<parameter id="grayvalOut"/>
+<parameter id="grayvalOutIndex"/>
+<parameter id="rateHighRemove"/>
+<parameter id="rateLowRemove"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

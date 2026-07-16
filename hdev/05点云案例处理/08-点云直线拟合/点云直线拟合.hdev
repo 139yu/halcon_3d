@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.11.1.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>read_image (Image, '../test.tif')</l>
+<l>get_image_size (Image, Width, Height)</l>
+<c></c>
+<l>Debug := 1</l>
+<l>Scale := 0.01</l>
+<l>gen_image_surface_first_order (X, 'real', 0, 1, 0, 0, 0, Width, Height)</l>
+<l>gen_image_surface_first_order (Y, 'real', 1, 0, 0, 0, 0, Width, Height)</l>
+<l>min_max_gray (Image, Image, 0, Min, Max, Range)</l>
+<l>if(Min &lt; 0)</l>
+<l>    scale_image (Image, Image, 1, -Min)</l>
+<l>endif</l>
+<l>min_max_gray (Image, Image, 0, Min, Max, Range)</l>
+<l>threshold (Image, Region, 1, Max)</l>
+<l>reduce_domain (Image, Region, Z)</l>
+<l>convert_image_type (Z, Z, 'real')</l>
+<l>min_max_gray (Z, Z, 0, Min, Max, Range)</l>
+<l>scale_image (Z, Z, Scale, -Min * Scale)</l>
+<c></c>
+<l>xyz_to_object_model_3d (X, Y, Z, ObjectModel3D)</l>
+<l>dev_get_window (WindowHandle)</l>
+<l>VisParamName := ['disp_pose_0','lut','intensity','disp_background','alpha_0']</l>
+<l>VisParamValue := ['true','hsi','coord_z','true',0.5]</l>
+<l>if(Debug == 1)</l>
+<l>    dev_clear_window ()</l>
+<c>    </c>
+<l>    visualize_object_model_3d (WindowHandle, ObjectModel3D, [], [], VisParamName,\
+                               VisParamValue, [], [], [], PoseOut)</l>
+<l>endif</l>
+<c></c>
+<l>sample_object_model_3d (ObjectModel3D, 'fast', 5, [], [], SampledObjectModel3D)</l>
+<l>triangulate_object_model_3d (SampledObjectModel3D, 'greedy',\
+                             [], [], TriangulatedObjectModel3D, Information)</l>
+<c></c>
+<l>Width := 640</l>
+<l>Height := 580</l>
+<c></c>
+<l>BorderFact := 1.5</l>
+<c></c>
+<l>gen_cam_par_area_scan_division (0.008, 0, 5.2e-06, 5.2e-06, Width / 2, \
+                                Height / 2, Width, Height, CameraParam)</l>
+<l>get_cam_par_data (CameraParam, 'sx', Sx)</l>
+<l>get_cam_par_data (CameraParam, 'sy', Sy)</l>
+<l>get_cam_par_data (CameraParam, 'focus', Focus)</l>
+<c></c>
+<l>get_object_model_3d_params (ObjectModel3D, 'bounding_box1', Box1Val)</l>
+<l>OffsetX := (Box1Val[3] - Box1Val[0]) * Focus / (Width * Sx / BorderFact)</l>
+<l>OffsetY := (Box1Val[4] - Box1Val[1]) * Focus / (Width * Sy / BorderFact)</l>
+<l>Offset := max([OffsetX,OffsetY])</l>
+<l>create_pose (-(Box1Val[3] - Box1Val[0]) / 2, -(Box1Val[4] - Box1Val[1]) / 2,\
+             -Box1Val[2] + Offset,0, 0, 0, 'Rp+T', 'gba', 'point', PoseInit)</l>
+<l>dev_close_window ()</l>
+<l>dev_open_window (0, 0, Width, Height, 'black', WindowHandle)</l>
+<l>visualize_object_model_3d (WindowHandle, ObjectModel3D, CameraParam, PoseInit,\
+                           VisParamName,VisParamValue, ['请绘制ROI'], [], [], PoseOut)</l>
+<l>create_drawing_object_rectangle2 (Width / 2, Height / 2, rad(90), 50, 30, DrawID)</l>
+<l>set_drawing_object_params (DrawID, 'line_width', 1)</l>
+<l>set_drawing_object_params (DrawID, 'color', 'green')</l>
+<l>attach_drawing_object_to_window (WindowHandle, DrawID)</l>
+<l>stop()</l>
+<c></c>
+<l>get_drawing_object_params (DrawID, ['row','column','phi','length1','length2'], ROIParams)</l>
+<l>gen_rectangle2 (Rectangle, ROIParams[0], ROIParams[1], ROIParams[2], \
+                ROIParams[3], ROIParams[4])</l>
+<l>detach_drawing_object_from_window (WindowHandle, DrawID)</l>
+<c></c>
+<l>object_model_3d_to_xyz (X, Y, Z, TriangulatedObjectModel3D, 'cartesian_faces',\
+                        CameraParam, PoseOut)</l>
+<l>dev_clear_window ()</l>
+<l>dev_set_draw ('margin')</l>
+<l>dev_set_color ('yellow')</l>
+<l>dev_display (Z)</l>
+<l>dev_display (Rectangle)</l>
+<c></c>
+<l>X0 := ROIParams[0]</l>
+<l>Y0 := ROIParams[1]</l>
+<l>Dir := ROIParams[2]</l>
+<l>X1 := ROIParams[0]</l>
+<l>Y1 := ROIParams[1] + ROIParams[3] * 0.7</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, Dir, X0, Y0, HomMat2DRotate)</l>
+<l>affine_trans_pixel (HomMat2DRotate, X1, Y1, RowTrans1, ColTrans1)</l>
+<c>* 点生轮廓-轮廓生区域</c>
+<l>gen_circle_contour_xld (ContCircle, RowTrans1, ColTrans1, 5, 0, rad(360), \
+                        'positive', 1)</l>
+<l>gen_region_contour_xld (ContCircle, Region1, 'filled')</l>
+<l>reduce_domain (Z, Region1, ImageReduced)</l>
+<l>xyz_to_object_model_3d (X, Y, ImageReduced, Model3D_Mark1)</l>
+<l>get_object_models_center (Model3D_Mark1, Center1)</l>
+<c></c>
+<l>hom_mat2d_rotate (HomMat2DIdentity, Dir-rad(180), X0, Y0, HomMat2DRotate)</l>
+<l>affine_trans_pixel (HomMat2DRotate, X1, Y1, RowTrans2, ColTrans2)</l>
+<l>gen_circle_contour_xld (ContCircle1, RowTrans2, ColTrans2, 5, 0, rad(360), \
+                        'positive', 1)</l>
+<l>gen_region_contour_xld (ContCircle1, Region2, 'filled')</l>
+<l>reduce_domain (Z, Region2, ImageReduced1)</l>
+<l>xyz_to_object_model_3d (X, Y, ImageReduced1, Model3D_Mark2)</l>
+<l>get_object_models_center (Model3D_Mark2, Center2)</l>
+<c></c>
+<l>reduce_domain (Z, Rectangle, ImageReduced)</l>
+<l>xyz_to_object_model_3d (X, Y, ImageReduced, Object3DROI)</l>
+<c>* 从任意位姿还原到原始坐标系</c>
+<l>pose_invert (PoseOut, PoseInvert)</l>
+<l>pose_to_hom_mat3d (PoseInvert, HomMat3D)</l>
+<l>affine_trans_object_model_3d (Object3DROI, HomMat3D, Object3DROI)</l>
+<l>affine_trans_point_3d (HomMat3D, Center1[0], Center1[1], Center1[2], Qx1, Qy1, Qz1)</l>
+<l>Center1[0] := Qx1</l>
+<l>Center1[1] := Qy1</l>
+<l>Center1[2] := Qz1</l>
+<l>gen_sphere_object_model_3d_center (Qx1, Qy1, Qz1, 5, Model3D_Mark1)</l>
+<c></c>
+<l>affine_trans_point_3d (HomMat3D, Center2[0], Center2[1], Center2[2], Qx2, Qy2, Qz2)</l>
+<l>Center2[0] := Qx2</l>
+<l>Center2[1] := Qy2</l>
+<l>Center2[2] := Qz2</l>
+<l>gen_sphere_object_model_3d_center (Qx2, Qy2, Qz2, 5, Model3D_Mark2)</l>
+<c></c>
+<l>if(Debug == 1)</l>
+<l>    ObjectModels := [TriangulatedObjectModel3D,Object3DROI,Model3D_Mark1,Model3D_Mark2]</l>
+<l>    VisParamName := ['lut','intensity','disp_pose_0','color_2','color_3']</l>
+<l>    VisParamValue := ['hsi','coord_z','true','white','yellow']</l>
+<l>    visualize_object_model_3d (WindowHandle, ObjectModels, CameraParam, PoseOut, \
+                               VisParamName,VisParamValue, [], [], [], PoseOut1)</l>
+<l>endif</l>
+<c></c>
+<l>get_object_model_3d_params (Object3DROI, 'bounding_box1', BoxROIParams)</l>
+<l>get_object_models_center (Object3DROI, Center)</l>
+<l>PoseBox := [Center[0],Center[1],Center[2],0,0,0,0]</l>
+<l>BoxHeight := 0.5 / Scale</l>
+<l>BoxLengthX := BoxROIParams[3] - BoxROIParams[0]</l>
+<l>BoxLengthY := BoxROIParams[4] - BoxROIParams[1]</l>
+<l>BoxLengthZ := BoxROIParams[5] - BoxROIParams[2] + BoxHeight</l>
+<l>gen_box_object_model_3d (PoseBox, BoxLengthX, BoxLengthY, BoxLengthZ, ObjectModelROIBox)</l>
+<c></c>
+<c>* Z使用的Center，Box的中心点位置</c>
+<l>gen_sphere_object_model_3d_center (Center1[0], Center1[1],\
+                                   Center[2] - BoxLengthZ / 2, 5, Model3D_Mark1)</l>
+<l>gen_sphere_object_model_3d_center (Center1[0], Center1[1],\
+                                   Center[2] + BoxLengthZ / 2, 5, Model3D_Mark2)</l>
+<l>gen_sphere_object_model_3d_center (Center2[0], Center2[1],\
+                                   Center[2] - BoxLengthZ / 2, 5, Model3D_Mark3)</l>
+<l>gen_sphere_object_model_3d_center (Center2[0], Center2[1],\
+                                   Center[2] + BoxLengthZ / 2, 5, Model3D_Mark4)</l>
+<c></c>
+<l>sample_object_model_3d (Model3D_Mark1, 'fast', 0.05, [], [], Model3D_Mark1)</l>
+<l>sample_object_model_3d (Model3D_Mark2, 'fast', 0.05, [], [], Model3D_Mark2)</l>
+<l>sample_object_model_3d (Model3D_Mark3, 'fast', 0.05, [], [], Model3D_Mark3)</l>
+<l>sample_object_model_3d (Model3D_Mark4, 'fast', 0.05, [], [], Model3D_Mark4)</l>
+<c></c>
+<l>ObjectModelMarks := [Model3D_Mark1,Model3D_Mark2,Model3D_Mark3,Model3D_Mark4]</l>
+<l>union_object_model_3d (ObjectModelMarks, 'points_surface', UnionObjectModel3D)</l>
+<c></c>
+<l>FittingParams := ['primitive_type','fitting_algorithm','output_xyz_mapping']</l>
+<l>FittingValues := ['plane','least_squares_huber','false']</l>
+<c></c>
+<l>fit_primitives_object_model_3d (UnionObjectModel3D, FittingParams, FittingValues, \
+                                ObjectModel3DPlane)</l>
+<l>if(Debug == 1)</l>
+<l>    ObjectModels := [TriangulatedObjectModel3D,ObjectModelROIBox,Object3DROI,\
+                     ObjectModel3DPlane,ObjectModelMarks]</l>
+<l>    VisParamName := ['lut','disp_pose_0','color_1','color_3','alpha_0','alpha_1']</l>
+<l>    VisParamValue := ['hsi','true','blue','green',0.5,0.5]</l>
+<l>    visualize_object_model_3d (WindowHandle, ObjectModels, CameraParam, PoseOut1,\
+                               VisParamName, VisParamValue, [], [], [], PoseOut2)</l>
+<l>endif</l>
+<c>* 平面位姿</c>
+<l>get_object_model_3d_params (ObjectModel3DPlane, 'primitive_pose', PlanePose)</l>
+<c></c>
+<l>StartX := Center2[0]</l>
+<l>StartY := Center2[1]</l>
+<l>StartZ := Center[2] + BoxLengthZ / 2</l>
+<l>create_pose (StartX, StartY, StartZ, 0, 0, 0, 'Rp+T', 'gba', 'point', StartPose)</l>
+<l>StartPos := [StartX,StartY,StartZ]</l>
+<l>EndX := Center1[0]</l>
+<l>EndY := Center1[1]</l>
+<l>EndZ := Center[2] + BoxLengthZ / 2</l>
+<l>create_pose (EndX, EndY, EndZ, 0, 0, 0, 'Rp+T', 'gba', 'point', EndPose)</l>
+<l>EndPos := [EndX,EndY,EndZ]</l>
+<c></c>
+<l>gen_arrow_object_model_3d (1, StartPose, EndPose, OM3DArrow)</l>
+<c>* 箭头方向,0:从低到高，1：从高到低</c>
+<l>ArrowDir := 0</l>
+<l>if(Center2[2] &gt; Center1[2])</l>
+<l>    ArrowDir := 1</l>
+<l>endif</l>
+<c></c>
+<l>if(Debug == 1)</l>
+<l>   ObjectModels := [Object3DROI,ObjectModel3DPlane,OM3DArrow] </l>
+<l>   VisParamName := ['disp_pose_0','color_0','color_1','color_2','alpha_0']</l>
+<l>   VisParamValue := ['true','green','yellow','white',0.5]</l>
+<l>   visualize_object_model_3d (WindowHandle, ObjectModels, [], [], \
+                              VisParamName, VisParamValue, [], [], [], PoseOut3)</l>
+<l>endif</l>
+<c>* 综合展示</c>
+<l>AllObjects := [TriangulatedObjectModel3D,ObjectModelROIBox,Object3DROI,ObjectModel3DPlane,OM3DArrow]</l>
+<l>VisParamName := ['disp_pose_0','intensity','color_1','color_3','color_4','alpha_0','alpha_1']</l>
+<l>VisParamValue := ['true','coord_z','yellow','white','green',0.5,0.5]</l>
+<l>visualize_object_model_3d (WindowHandle, AllObjects, CameraParam, PoseOut, \
+                           VisParamName, VisParamValue, [], [], [], PoseOut4)</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>

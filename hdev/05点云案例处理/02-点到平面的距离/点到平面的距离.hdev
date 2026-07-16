@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>read_image(ImageReal,'test.tif')</l>
+<c></c>
+<l>dev_get_window (WindowHandle)</l>
+<c></c>
+<l>xResolution:=0.06</l>
+<l>yResolution:=0.06</l>
+<l>zResolution:=0.001 </l>
+<l>ScaleFactor:=[xResolution,yResolution,zResolution]</l>
+<l>dev_display (ImageReal)</l>
+<c></c>
+<l>create_drawing_object_rectangle2 (150, 150, 0, 100, 100, DrawID1)</l>
+<l>set_drawing_object_params (DrawID1, ['color','line_width'], ['green',1])</l>
+<l>attach_drawing_object_to_window (WindowHandle, DrawID1)</l>
+<c></c>
+<l>create_drawing_object_rectangle2 (300, 150, 0, 100, 100, DrawID2)</l>
+<l>set_drawing_object_params (DrawID2, ['color','line_width'], ['yellow',1])</l>
+<l>attach_drawing_object_to_window (WindowHandle, DrawID2)</l>
+<c></c>
+<l>set_display_font (WindowHandle, 16, 'mono', 'true', 'false')</l>
+<l>Text := '1.绿色框为基准面'</l>
+<l>Text[1] := '2.黄色框为测量面'</l>
+<c></c>
+<l>dev_disp_text (Text, 'window', 10, 10, ['forest green','orange'], ['box_color'], ['sky blue'])</l>
+<c></c>
+<l>dev_set_color ('forest green')</l>
+<c></c>
+<l>get_drawing_object_params (DrawID1, ['row','column','phi','length1','length2'], Rect1ParamValue)</l>
+<l>gen_rectangle2 (Rectangle1, Rect1ParamValue[0], Rect1ParamValue[1], Rect1ParamValue[2], \
+                Rect1ParamValue[3], Rect1ParamValue[4])</l>
+<l>dev_set_color ('yellow')</l>
+<l>get_drawing_object_params (DrawID2, ['row','column','phi','length1','length2'], Rect2ParamValue)</l>
+<c></c>
+<l>gen_rectangle2 (Rectangle2, Rect2ParamValue[0], Rect2ParamValue[1], Rect2ParamValue[2], \
+                Rect2ParamValue[3], Rect2ParamValue[4])</l>
+<c></c>
+<l>detach_drawing_object_from_window (WindowHandle, DrawID2)</l>
+<l>detach_drawing_object_from_window (WindowHandle, DrawID1)</l>
+<c></c>
+<l>LowPercent := 0.1</l>
+<l>HighPercent := 0.1</l>
+<c></c>
+<c></c>
+<l>image_region_filter (ImageReal, Rectangle1, ImageReduced1, Region1, HighPercent, LowPercent, \
+                     GrayvalArray1, RowArray1, ColumnArray1)</l>
+<c></c>
+<l>image_region_filter (ImageReal, Rectangle2, ImageReduced2, Region2, HighPercent, LowPercent, \
+                     GrayvalArray2, RowArray2, ColumnArray2)</l>
+<c></c>
+<l>smallest_rectangle2 (Rectangle1, Row, Column, Phi, Length1, Length2)</l>
+<l>fit_surface_first_order (Rectangle1, ImageReduced1, 'huber', 5, 2, Alpha, Beta, Gamma)</l>
+<l>gen_image_surface_first_order (ImageSurface, 'real', Alpha, Beta, Gamma,  \
+                               Row, Column, Length2 * 2, Length1 * 2)</l>
+<c></c>
+<l>depth_map_piontcloud (ImageReduced1, ScaleFactor, 1, 0,\
+                      ObjectModel3D, ObjectModelPlane, zScale)</l>
+<l>depth_map_piontcloud (ImageReduced2, ScaleFactor, 1, 0,\
+                      ObjectModel3D1, ObjectModelPlane1, zScale1)</l>
+<c></c>
+<l>depth_map_piontcloud (ImageReal, ScaleFactor, 1, 0,\
+                      ObjectModel3D2, ObjectModelPlane2, zScale2)</l>
+<c></c>
+<l>GrayDict.at(0) := GrayvalArray1</l>
+<l>GrayDict.at(1) := GrayvalArray2</l>
+<c>* 平面顺序要与ZArray一直</c>
+<l>ObjectModel3Ds := [ObjectModelPlane,ObjectModelPlane1,ObjectModel3D2]</l>
+<c></c>
+<l>CountGray := GrayDict.length()</l>
+<c></c>
+<l>GrayMin := []</l>
+<l>for Index := 0 to CountGray - 1 by 1</l>
+<l>    GrayMin := [GrayMin,min(GrayDict.at(Index))]</l>
+<l>endfor</l>
+<c></c>
+<l>min_max_gray (ImageReal, ImageReal, 0, Min, Max, Range)</l>
+<c></c>
+<l>threshold (ImageReal, Region, 1, Max)</l>
+<c></c>
+<l>reduce_domain (ImageReal, Region, ImageReduced)</l>
+<c></c>
+<l>convert_image_type (ImageReduced, Z, 'real')</l>
+<c></c>
+<l>min_max_gray (Z, Z, 0, Min, Max, Range)</l>
+<l>final_ObjectModel3Ds := []</l>
+<c></c>
+<l>for Index := 0 to CountGray-1 by 1</l>
+<c>    * z轴对齐</c>
+<l>    d := (GrayMin[Index] - Min) * zScale</l>
+<l>    TransPose := [0,0,d,0,0,0,0]</l>
+<l>    rigid_trans_object_model_3d (ObjectModel3Ds[Index], TransPose, ObjectModel3DRigidTrans)</l>
+<c>   </c>
+<l>    final_ObjectModel3Ds := [final_ObjectModel3Ds,ObjectModel3DRigidTrans]</l>
+<l>    visualize_object_model_3d (WindowHandle, final_ObjectModel3Ds, [], [], \
+                               ['intensity_red','intensity_green','intensity_blue','disp_pose'], \
+                               ['coord_x','coord_y','coord_z','true'], [], [], [], PoseOut)</l>
+<l>endfor</l>
+<c></c>
+<l>visParamName := ['alpha_0','intensity','color_2','color_1']</l>
+<l>visParamValue := [0.7,'coord_z','red','yellow']</l>
+<c></c>
+<l>visualize_object_model_3d (WindowHandle, [ObjectModel3Ds[2],final_ObjectModel3Ds], [], \
+                           [], visParamName, visParamValue, [], [], [], PoseOut1)</l>
+<c></c>
+<l>sample_object_model_3d (final_ObjectModel3Ds[0], 'fast', 1, [], [], SampledObjectModel3D)</l>
+<c></c>
+<l>visParamName := ['alpha_0','intensity','color_0']</l>
+<l>visParamValue := [0.7,'coord_z','yellow']</l>
+<c></c>
+<l>visualize_object_model_3d (WindowHandle, [SampledObjectModel3D], [], \
+                           [], visParamName, visParamValue, [], [], [], PoseOut1)</l>
+<c>* 坐标轴对齐</c>
+<l>moments_object_model_3d (SampledObjectModel3D, 'principal_axes', PoseOut)</l>
+<l>pose_invert (PoseOut, PoseInvert)</l>
+<c></c>
+<l>pose_to_hom_mat3d (PoseInvert, HomMat3D)</l>
+<c></c>
+<l>affine_trans_object_model_3d (SampledObjectModel3D, HomMat3D, ObjectModel3DAffineTrans)</l>
+<l>visualize_object_model_3d (WindowHandle, [ObjectModel3DAffineTrans], [], \
+                           [], visParamName, visParamValue, [], [], [], PoseOut1)</l>
+<c></c>
+<l>get_object_model_3d_params (ObjectModel3DAffineTrans, 'point_coord_x', XValue)</l>
+<l>get_object_model_3d_params (ObjectModel3DAffineTrans, 'point_coord_y', YValue)</l>
+<l>get_object_model_3d_params (ObjectModel3DAffineTrans, 'point_coord_z', ZValue)</l>
+<c>* 平面方程 Ax+By+Cz+D = 0</c>
+<l>pAvg := |XValue| / 5</l>
+<c></c>
+<l>pX := [XValue[pAvg * 1],XValue[pAvg * 2],XValue[pAvg * 4]]</l>
+<l>pY := [YValue[pAvg * 1],YValue[pAvg * 2],YValue[pAvg * 4]]</l>
+<l>pZ := [ZValue[pAvg * 1],ZValue[pAvg * 2],ZValue[pAvg * 4]]</l>
+<c></c>
+<l>plane_balls := []</l>
+<c></c>
+<l>for i := 0 to |pX| - 1 by 1</l>
+<l>    gen_sphere_object_model_3d_center (pX[i], pY[i], pZ[i], 1, ObjectModel3D3)</l>
+<l>    plane_balls := [plane_balls,ObjectModel3D3]</l>
+<l>endfor</l>
+<c></c>
+<l>visualize_object_model_3d (WindowHandle,[plane_balls,ObjectModel3DAffineTrans], [], \
+                           [], ['intensity_red','intensity_green','intensity_blue','disp_pose'],\
+                           ['coord_x','coord_y','coord_z','true'], [], [], [], PoseOut1)</l>
+<c></c>
+<l>A:=(pY[1]-pY[0])*(pZ[2]-pZ[0])-(pZ[1]-pZ[0])*(pY[2]-pY[0])</l>
+<l>B:=(pX[2]-pX[0])*(pZ[1]-pZ[0])-(pX[1]-pX[0])*(pZ[2]-pZ[0])</l>
+<l>C:=(pX[1]-pX[0])*(pY[2]-pY[0])-(pX[2]-pX[0])*(pY[1]-pY[0])</l>
+<l>D:=-(A*pX[0]+B*pY[0]+C*pZ[0])</l>
+<c></c>
+<c>* 让两个平面应用同一个矩阵</c>
+<l>sample_object_model_3d (final_ObjectModel3Ds[1], 'fast', 1, [], [], SampledObjectModel3D1)</l>
+<c></c>
+<l>affine_trans_object_model_3d (SampledObjectModel3D1, HomMat3D, ObjectModel3DAffineTrans1)</l>
+<c></c>
+<c></c>
+<l>visualize_object_model_3d (WindowHandle,[ObjectModel3DAffineTrans,ObjectModel3DAffineTrans1], [], \
+                           [], ['intensity_red','intensity_green','intensity_blue','disp_pose'],\
+                           ['coord_x','coord_y','coord_z','true'], [], [], [], PoseOut1)</l>
+<c></c>
+<l>get_object_model_3d_params (ObjectModel3DAffineTrans1, 'point_coord_x', ParamValue_x1)</l>
+<l>get_object_model_3d_params (ObjectModel3DAffineTrans1, 'point_coord_y', ParamValue_y1)</l>
+<l>get_object_model_3d_params (ObjectModel3DAffineTrans1, 'point_coord_z', ParamValue_z1)</l>
+<c></c>
+<l>gen_sphere_object_model_3d_center (mean(ParamValue_x1),mean(ParamValue_y1),\
+                                   mean(ParamValue_z1),1, ObjectModel3DBall1)</l>
+<c></c>
+<l>p0:=[mean(ParamValue_x1),mean(ParamValue_y1),mean(ParamValue_z1)]</l>
+<c></c>
+<l>Dis:=fabs(A*p0[0]+B*p0[1]+C*p0[2]+D)/(1.0*sqrt(A*A+B*B+C*C))</l>
+<c></c>
+<l>height := Dis / zScale * 0.001</l>
+<c></c>
+<l>visParamName := ['alpha_0','intensity','color_1','color_2','color_3']</l>
+<l>visParamValue := [0.7,'coord_z','red','yellow','blue']</l>
+<l>stop()</l>
+<c></c>
+<l>get_object_models_center (ObjectModel3Ds[1], Center)</l>
+<c></c>
+<l>gen_cylinder_object_model_3d ([Center[0],Center[1],d,0,0,0,0], 0.5, -Dis, 1, ObjectModel3DCylinder)</l>
+<c></c>
+<l>gen_box_object_model_3d([Center[0],Center[1],d,0,0,0,0], 3, 3, 2, ObjectModel3DBox)</l>
+<l>gen_box_object_model_3d([Center[0],Center[1],d - Dis,0,0,0,0], 3, 3, 2, ObjectModel3DBox1)</l>
+<c></c>
+<l>Labels := ['','基准面','测量面',height+'mm','','']</l>
+<l>objs:=[ObjectModel3Ds[2],final_ObjectModel3Ds,ObjectModel3DCylinder,ObjectModel3DBox,ObjectModel3DBox1]</l>
+<c></c>
+<l>visualize_object_model_3d (WindowHandle, objs, [], [], visParamName, visParamValue, \
+                           '', [Labels], '', PoseOut)        </l>
+<c></c>
+<c></c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="grayval_data_filter">
+<interface>
+<ic>
+<par name="Grayval" base_type="ctrl" dimension="0"/>
+<par name="HighPercent" base_type="ctrl" dimension="0"/>
+<par name="LowPercent" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="OutGrayval" base_type="ctrl" dimension="0"/>
+<par name="OutInices" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>tuple_sort_index(Grayval, Indices)</l>
+<c>* 对灰度值排序</c>
+<l>tuple_sort(Grayval, SortedGrayval)</l>
+<c></c>
+<l>HighRemoveCount := int(|SortedGrayval| * HighPercent)</l>
+<c></c>
+<l>if(HighRemoveCount != 0)</l>
+<c>    * 生成要要移除的索引，索引从0开始，要-1</c>
+<l>    tuple_gen_sequence (|SortedGrayval| - 1 -  HighRemoveCount, |SortedGrayval| - 1, 1, SequenceHighRemove)</l>
+<c>    * 移除</c>
+<l>    tuple_remove (SortedGrayval, SequenceHighRemove, ReducedGray)</l>
+<l>else</l>
+<l>    ReducedGray := SortedGrayval</l>
+<l>endif</l>
+<l>LowRemoveCount := int(|SortedGrayval| * LowPercent)</l>
+<l>tuple_gen_sequence (0, LowRemoveCount - 1, 1, SequenceLowRemvoe)</l>
+<l>tuple_remove(ReducedGray,SequenceLowRemvoe,ReduceGray)</l>
+<c>* 得到最大、最小灰度值，根据此值过滤</c>
+<l>MinGrayval := ReduceGray[0]</l>
+<l>MaxGrayval := ReduceGray[|ReduceGray| - 1]</l>
+<c>* 从原始灰度值中找，满足条件的返回1</c>
+<l>tuple_less_elem(Grayval, MinGrayval, Less)</l>
+<l>tuple_less_elem(Grayval, MaxGrayval, Greater)</l>
+<c>* 得到索引</c>
+<l>tuple_find (Less, 1, LessIndices)</l>
+<l>tuple_find (Greater, 1, GreaterIndices)</l>
+<c></c>
+<l>tuple_concat (LessIndices, GreaterIndices, RemoveIndices)</l>
+<c>* 在原始灰度值中过滤</c>
+<l>tuple_remove(Grayval, RemoveIndices, OutGrayval)</l>
+<c></c>
+<l>tuple_gen_sequence (0, |Indices| - 1, 1, Sequence)</l>
+<c>* 得到过滤后的索引</c>
+<l>tuple_remove(Sequence,RemoveIndices, OutInices)</l>
+<l>return ()</l>
+</body>
+<docu id="grayval_data_filter">
+<abstract lang="zh_CN">灰度值过滤</abstract>
+<parameters>
+<parameter id="Grayval">
+<description lang="zh_CN">灰度序列</description>
+<sem_type>real</sem_type>
+</parameter>
+<parameter id="HighPercent">
+<default_type>real</default_type>
+<description lang="zh_CN">去除最高百分比</description>
+<sem_type>number</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>0.010000</value_max>
+<value_min>0.010000</value_min>
+</parameter>
+<parameter id="LowPercent">
+<default_type>real</default_type>
+<description lang="zh_CN">去除最低百分百</description>
+<sem_type>number</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>0.010000</value_max>
+<value_min>0.010000</value_min>
+</parameter>
+<parameter id="OutGrayval">
+<description lang="zh_CN">过滤后的灰度序列</description>
+<sem_type>real</sem_type>
+</parameter>
+<parameter id="OutInices">
+<default_type>integer</default_type>
+<description lang="zh_CN">过滤后的索引</description>
+<sem_type>real</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="filter_surface_data">
+<interface>
+<io>
+<par name="ImageReal" base_type="iconic" dimension="0"/>
+<par name="ImageReduced" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="GrayvalArray" base_type="ctrl" dimension="0"/>
+<par name="RowArray" base_type="ctrl" dimension="0"/>
+<par name="ColumnArray" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>get_image_size (ImageReduced, Width, Height)</l>
+<c></c>
+<l>GrayvalArray := []</l>
+<l>RowArray := []</l>
+<l>ColumnArray :=[]</l>
+<c></c>
+<c></c>
+<l>LowPercent := 0.1</l>
+<l>HighPercent := 0.1</l>
+<c></c>
+<l>get_region_points (ImageReduced, Rows, Columns)</l>
+<c>* 得到锁定区域的灰度值</c>
+<l>get_grayval (ImageReal, Rows, Columns, Grayval)</l>
+<c>* 对元组进行排序，返回排序后的索引</c>
+<l>grayval_data_filter (Grayval, HighPercent, LowPercent, OutGrayval, OutInices)</l>
+<c></c>
+<l>GrayvalArray := [GrayvalArray,OutGrayval]</l>
+<c></c>
+<l>tuple_select (Rows, OutInices, RowArray)</l>
+<l>tuple_select (Columns, OutInices, ColumnArray)</l>
+<l>return ()</l>
+</body>
+<docu id="filter_surface_data">
+<parameters>
+<parameter id="ColumnArray"/>
+<parameter id="GrayvalArray"/>
+<parameter id="ImageReal"/>
+<parameter id="ImageReduced"/>
+<parameter id="RowArray"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="image_region_filter">
+<interface>
+<io>
+<par name="ImageReal" base_type="iconic" dimension="0"/>
+<par name="Rectangle1" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="ImageReduced" base_type="iconic" dimension="0"/>
+<par name="Region" base_type="iconic" dimension="0"/>
+</oo>
+<ic>
+<par name="HighPercent" base_type="ctrl" dimension="0"/>
+<par name="LowPercent" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="GrayvalArray" base_type="ctrl" dimension="0"/>
+<par name="RowArray" base_type="ctrl" dimension="0"/>
+<par name="ColumnArray" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>GrayvalArray := []</l>
+<l>RowArray := []</l>
+<l>ColumnArray :=[]</l>
+<c></c>
+<l>union1(Rectangle1, RegionUnion)</l>
+<l>reduce_domain (ImageReal, RegionUnion, ImageReduced)</l>
+<c></c>
+<l>get_image_size (ImageReduced, Width, Height)</l>
+<c></c>
+<l>connection (RegionUnion, ConnectedRegions)</l>
+<l>count_obj (ConnectedRegions, Number)</l>
+<l>for i := 1 to Number by 1</l>
+<l>    select_obj (ConnectedRegions, ObjectSelected, i)</l>
+<l>    get_region_points (ObjectSelected, Rows, Columns)</l>
+<c>    * 得到锁定区域的灰度值</c>
+<l>    get_grayval (ImageReal, Rows, Columns, Grayval)</l>
+<c>    * 对元组进行排序，返回排序后的索引</c>
+<l>    grayval_data_filter (Grayval, HighPercent, LowPercent, OutGrayval, OutInices)</l>
+<c></c>
+<l>    GrayvalArray := [GrayvalArray,OutGrayval]</l>
+<c></c>
+<l>    tuple_select (Rows, OutInices, OutRow)</l>
+<l>    tuple_select (Columns, OutInices, OutColumn)</l>
+<c>    </c>
+<l>    tuple_concat (RowArray, OutRow, RowArray)</l>
+<l>    tuple_concat (ColumnArray, OutColumn, ColumnArray)</l>
+<l>endfor</l>
+<c>* 创建一个具有恒定值的灰度图像</c>
+<l>gen_image_const (Image, 'uint2', Width, Height)</l>
+<c>* 通过点位锁定区域，并设置灰度值</c>
+<l>gen_region_points (Region, RowArray, ColumnArray)</l>
+<l>reduce_domain (Image, Region, ImageReduced)</l>
+<l>set_grayval (ImageReduced, RowArray, ColumnArray, GrayvalArray)</l>
+<l>return ()</l>
+</body>
+<docu id="image_region_filter">
+<parameters>
+<parameter id="ColumnArray"/>
+<parameter id="GrayvalArray"/>
+<parameter id="HighPercent"/>
+<parameter id="ImageReal"/>
+<parameter id="ImageReduced"/>
+<parameter id="LowPercent"/>
+<parameter id="Rectangle1"/>
+<parameter id="Region"/>
+<parameter id="RowArray"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

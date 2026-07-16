@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<c>* ******************************************************************</c>
+<c>* This example program shows how to use the operator</c>
+<c>* smallest_bounding_box_object_model_3d in HALCON.</c>
+<c>* </c>
+<c>* ***********************************************************************</c>
+<c>* </c>
+<c>* Prepare Windows</c>
+<l>dev_update_off ()</l>
+<l>dev_close_window ()</l>
+<l>dev_open_window_fit_size (0, 0, 640, 480, [], [], WindowHandle)</l>
+<l>set_display_font (WindowHandle, 16, 'mono', 'true', 'false')</l>
+<c>* </c>
+<c>* Read 3D object model</c>
+<l>read_object_model_3d ('pipe_joint', 'm', [], [], ObjectModel3D, Status)</l>
+<c>* </c>
+<l>Instructions[0] := 'Rotate: Left button'</l>
+<l>Instructions[1] := 'Zoom:   Shift + left button'</l>
+<l>Instructions[2] := 'Move:   Ctrl  + left button'</l>
+<c>* </c>
+<l>gen_cam_par_area_scan_division (0.01, 0.0, 0.00001, 0.00001, 320, 240, 640, 480, CamParam)</l>
+<l>hom_mat3d_identity (HomMat3DIdentity)</l>
+<c>* 旋转y轴</c>
+<l>hom_mat3d_rotate (HomMat3DIdentity, 0.78, 'y', 0, 0, 0, HomMat3DRotate)</l>
+<l>affine_trans_object_model_3d (ObjectModel3D, HomMat3DRotate, ObjectModel3DAffineTrans)</l>
+<c>* </c>
+<l>visualize_object_model_3d (WindowHandle, ObjectModel3DAffineTrans, CamParam, [], ['color', 'disp_pose'], ['green', 'true'], 'A 3D object model', '', Instructions, Pose)</l>
+<c>* </c>
+<c>* Calculate the axis-aligned bounding box.</c>
+<c>* 以坐标轴的方式对齐创建对应边界盒子</c>
+<l>smallest_bounding_box_object_model_3d (ObjectModel3DAffineTrans, 'axis_aligned', PoseBox, Length1, Length2, Length3)</l>
+<l>gen_box_object_model_3d (PoseBox, Length1, Length2, Length3, BoundingBoxes)</l>
+<l>visualize_object_model_3d (WindowHandle, [ObjectModel3DAffineTrans,BoundingBoxes], CamParam, Pose, ['color_0', 'color_1', 'alpha_1', 'disp_pose'], ['green', 'yellow', 0.5, 'true'], 'Axis-aligned bounding boxes', '', Instructions, Pose)</l>
+<c>* </c>
+<c>* Calculate the oriented bounding box.</c>
+<c>* 以定向边界框创建3d盒子</c>
+<l>smallest_bounding_box_object_model_3d (ObjectModel3DAffineTrans, 'oriented', PoseBoxOri, Length1Ori, Length2Ori, Length3Ori)</l>
+<l>gen_box_object_model_3d (PoseBoxOri, Length1Ori, Length2Ori, Length3Ori, BoundingBoxesOriented)</l>
+<l>visualize_object_model_3d (WindowHandle, [ObjectModel3DAffineTrans,BoundingBoxesOriented], CamParam, Pose, ['color_0', 'color_1', 'alpha_1', 'disp_pose'], ['green', 'yellow', 0.5, 'true'], 'Oriented bounding boxes', '', Instructions, Pose)</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>

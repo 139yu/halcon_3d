@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<c>* Example for Deformable Surface-Based 3D Matching</c>
+<c>* </c>
+<c>* This example shows how to use HALCON's deformable surface-based</c>
+<c>* 3D matching to find potentially deformed objects in 3D scenes.</c>
+<c>* In this example, a CAD model is used as reference model. Note that it</c>
+<c>* would also be possible, to created the reference model from (multiple)</c>
+<c>* views of the object (for more details, see the HDevelop example program</c>
+<c>* reconstruct_3d_object_model_for_matching.hdev).</c>
+<c>* To extend the supported range of deformations, deformed variants</c>
+<c>* of the 3D object model are added to the deformable surface model.</c>
+<c>* Finally, with the created deformed surface model, the object is searched</c>
+<c>* for in a number of 3D scenes.</c>
+<c>* </c>
+<c>* The example demonstrates how to use the operators</c>
+<c>*   create_deformable_surface_model, and</c>
+<c>*   find_deformable_surface_model,</c>
+<c>*   add_deformable_surface_model_sample,</c>
+<c>*   get_deformable_surface_model_param, and</c>
+<c>*   get_deformable_surface_matching_result.</c>
+<c>* </c>
+<c>* Initialization</c>
+<l>dev_update_off ()</l>
+<c>* 得到相机内参</c>
+<l>gen_cam_par_area_scan_division (0.01, 0, 6e-6, 6e-6, 400, 300, 800, 600, VisCamParam)</l>
+<c></c>
+<l>create_pose (0.00, 0.01, 0.62, 122.0, 357.0, 120.0, 'Rp+T', 'gba', 'point', VisPose1)</l>
+<l>create_pose (0.08, -0.77, 0.35, 298.0, 353.0, 315.0, 'Rp+T', 'gba', 'point', VisPose2)</l>
+<c>* alpha：透明度</c>
+<l>VisRefParName := ['alpha_0', 'color_0']</l>
+<l>VisRefParValue := [0.75, 'blue']</l>
+<l>dev_close_window ()</l>
+<l>get_cam_par_data (VisCamParam, 'image_width', ImageWidth)</l>
+<l>get_cam_par_data (VisCamParam, 'image_height', ImageHeight)</l>
+<l>dev_open_window_fit_size (0, 0, ImageWidth, ImageHeight, -1, -1, WindowHandle)</l>
+<l>set_display_font (WindowHandle, 16, 'mono', 'true', 'false')</l>
+<c>* </c>
+<l>Message := ['This example shows how to use HALCON\'s deformable surface-based 3D matching to find potentially deformed objects in 3D scenes.', ' ', 'In this example, a CAD model is used as reference model.', 'To extend the supported range of deformations, deformed variants of the 3D object model are added to the deformable surface model.', 'Finally, with the created deformed surface model, the object is searched for in a number of 3D scenes.']</l>
+<l>MessageWrapped := regexp_replace(Message + ' ',['(.{0,60})\\s', 'replace_all'],'$1\n')</l>
+<l>disp_message (WindowHandle, MessageWrapped, 'window', 12, 12, 'black', 'true')</l>
+<l>disp_continue_message (WindowHandle, 'black', 'true')</l>
+<l>stop ()</l>
+<c>* </c>
+<c>* Define headings for the individual steps</c>
+<l>Steps := 'Step 1: Create model'</l>
+<l>Steps[1] := 'Step 2: Extend model (optional)'</l>
+<l>Steps[2] := 'Step 3: Search for (deformed) instances of the object in 3D scenes'</l>
+<c>* </c>
+<c>* Introduce next step</c>
+<l>dev_clear_window ()</l>
+<l>disp_message (WindowHandle, Steps[0], 'window', 12, 12, 'white', 'false')</l>
+<l>disp_continue_message (WindowHandle, 'black', 'true')</l>
+<l>stop ()</l>
+<c>* </c>
+<c>* Read the 3D object model of the silicone baking mold</c>
+<l>read_object_model_3d ('silicone_baking_mold/silicone_baking_mold_3d_model', 'm', [], [], ObjectModel3DReference, Status)</l>
+<c>* </c>
+<c>* Define reference points that will be transformed into the search scene.</c>
+<c>* Here, points where the silicone baking mold might be grasped</c>
+<c>* with a vacuum cup are defined. Note that it is not necessary that</c>
+<c>* the reference points lie on the surface of the object.</c>
+<l>ReferencePointX := [4.2, 4.2, 4.2, -4.2, -4.2, -4.2] * 0.01</l>
+<l>ReferencePointY := [7.75, 0, -7.75, 7.75, 0, -7.75] * 0.01</l>
+<l>ReferencePointZ := [3.0, 3.0, 3.0, 3.0, 3.0, 3.0] * 0.01</l>
+<c>* </c>
+<c>* Visualize the 3D object model together with the reference points</c>
+<l>Title := 'Step 1: Create model\n \nCreate deformable surface model from a 3D object model of a\nsilicone baking mold (blue) and some reference points (green)'</l>
+<c>* 通过参考点生成3d模型</c>
+<l>gen_object_model_3d_from_points (ReferencePointX, ReferencePointY, ReferencePointZ, ObjectModel3DReferencePoints)</l>
+<l>visualize_object_model_3d (WindowHandle, [ObjectModel3DReference,ObjectModel3DReferencePoints], VisCamParam, VisPose1, [VisRefParName,'color_1', 'point_size_1'], [VisRefParValue,'green', 10], Title, [], [], PoseOut)</l>
+<c>* </c>
+<c>* Create deformable surface model from the 3D object model</c>
+<c>* 创建可变性表面模型，0.03：采样距离，'stiffness'：允许变形程度</c>
+<l>create_deformable_surface_model (ObjectModel3DReference, 0.03, 'stiffness', 0.85, DeformableSurfaceModel)</l>
+<c>* </c>
+<c>* Optionally, add the reference points that will be transformed to the</c>
+<c>* geometry of the deformed search object.</c>
+<c>* 将参考点添加到可变性表面模型</c>
+<l>add_deformable_surface_model_reference_point (DeformableSurfaceModel, ReferencePointX, ReferencePointY, ReferencePointZ, ReferencePointIndex)</l>
+<c>* </c>
+<c>* Introduce next step</c>
+<l>dev_clear_window ()</l>
+<l>disp_message (WindowHandle, Steps[0:1], 'window', 12, 12, ['dim gray', 'white'], 'false')</l>
+<l>disp_continue_message (WindowHandle, 'black', 'true')</l>
+<l>stop ()</l>
+<c>* </c>
+<c>* Optionally, add deformed variants of the 3D object model to the deformable surface model</c>
+<c>* to extend the supported range of deformations.</c>
+<c>* For this, the above created deformable surface model is used to find the deformed object</c>
+<c>* in a different scene. The determined deformations can be extracted from the matching result</c>
+<c>* and subsequently added to the deformable surface model to extend the supported range</c>
+<c>* of deformations.</c>
+<c>* 添加变形样本，让模型学习一下变形</c>
+<l>for Index := 1 to 3 by 1</l>
+<c>    * </c>
+<c>    * Read 3D scene that contains a deformed instance of the object</c>
+<l>    read_object_model_3d ('silicone_baking_mold/silicone_baking_mold_3d_scene_' + Index$'02d', 'm', [], [], ObjectModel3DScene, Status)</l>
+<c>    * </c>
+<c>    * The background is eliminated to make the matching faster and more robust.</c>
+<l>    preprocess_object_model_3d (ObjectModel3DScene, 'true', 'true', 'true', ObjectModel3DSearchSceneForDef)</l>
+<c>    * </c>
+<c>    * </c>
+<c>    * Visualize the preprocessed 3D scene that shows a deformed instance of the object</c>
+<l>    if (Index == 1)</l>
+<l>        dev_clear_window ()</l>
+<l>        Title := 'Step 2: Extend model\n \nProvide 3D scenes with deformed variants of the 3D object model'</l>
+<l>        visualize_object_model_3d (WindowHandle, ObjectModel3DSearchSceneForDef, VisCamParam, VisPose2, [], [], Title, [], [], PoseOut)</l>
+<l>    endif</l>
+<c>    * </c>
+<c>    * Find the position of the reference model in the 3D scene</c>
+<l>    Title := 'Step 2: Extend model\n \nProcess scene ' + Index + ' of 3...'</l>
+<l>    dev_clear_window ()</l>
+<l>    disp_message (WindowHandle, Title, 'window', 12, 12, 'black', 'true')</l>
+<c>    * </c>
+<l>    find_deformable_surface_model (DeformableSurfaceModel, ObjectModel3DSearchSceneForDef, 0.03, 0, [], [], Score, DeformableSurfaceMatchingResult)</l>
+<c>    * </c>
+<c>    * Visualize matching results</c>
+<l>    Title := 'Step 2: Extend model\n \nDeformed reference object model (blue) aligned with deformed\nobject in 3D scene (white)'</l>
+<c>    * Get deformed variant of the reference model and visualize it</c>
+<c>    * 获取参考模型对的变形体</c>
+<l>    get_deformable_surface_matching_result (DeformableSurfaceMatchingResult, 'deformed_model', 0, ObjectModel3DDeformed)</l>
+<l>    visualize_object_model_3d (WindowHandle, [ObjectModel3DDeformed,ObjectModel3DSearchSceneForDef], VisCamParam, PoseOut, VisRefParName, VisRefParValue, Title, [], [], PoseOut)</l>
+<c>    * </c>
+<c>    * Get the deformed variant of the sampled reference model and add it as training sample</c>
+<l>    dev_clear_window ()</l>
+<l>    disp_message (WindowHandle, 'Step 2: Extend model\n \nAdd deformation from found instance to deformable surface model...', 'window', 12, 12, 'black', 'true')</l>
+<l>    get_deformable_surface_matching_result (DeformableSurfaceMatchingResult, 'deformed_sampled_model', 0, ObjectModel3DDeformedSampled)</l>
+<c>    * 将得到的结果添加到微变形模板</c>
+<l>    add_deformable_surface_model_sample (DeformableSurfaceModel, ObjectModel3DDeformedSampled)</l>
+<l>endfor</l>
+<c>* </c>
+<c>* Introduce next step</c>
+<l>dev_clear_window ()</l>
+<l>disp_message (WindowHandle, Steps[0:2], 'window', 12, 12, ['dim gray', 'dim gray', 'white'], 'false')</l>
+<l>disp_continue_message (WindowHandle, 'black', 'true')</l>
+<l>stop ()</l>
+<c>* </c>
+<c>* Find the object in different 3D scenes, even if it appears deformed</c>
+<l>for Index := 4 to 7 by 1</l>
+<c>    * </c>
+<l>    dev_clear_window ()</l>
+<l>    disp_message (WindowHandle, 'Step 3: Search for deformed model instances\n \nLoad scene ' + (Index - 3) + ' of 4...', 'window', 12, 12, 'black', 'true')</l>
+<c>    * </c>
+<c>    * Read 3D scene that contains a (deformed) instance of the object</c>
+<l>    read_object_model_3d ('silicone_baking_mold/silicone_baking_mold_3d_scene_' + Index$'02d', 'm', [], [], ObjectModel3DScene, Status)</l>
+<c>    * </c>
+<c>    * The background of the 3D scene is not eliminated to show that the</c>
+<c>    * (deformed) instance of the object can be found in the complete scene</c>
+<l>    preprocess_object_model_3d (ObjectModel3DScene, 'false', 'true', 'true', ObjectModel3DSearchScene)</l>
+<c>    * </c>
+<c>    * Visualize the 3D scene</c>
+<l>    dev_clear_window ()</l>
+<l>    Title := 'Step 3: Search for deformed model instances\n \n3D scene in which the deformed object is searched for'</l>
+<l>    visualize_object_model_3d (WindowHandle, ObjectModel3DSearchScene, VisCamParam, VisPose2, [], [], Title, [], [], PoseOut)</l>
+<c>    * </c>
+<c>    * Deformable surface-based matching</c>
+<l>    find_deformable_surface_model (DeformableSurfaceModel, ObjectModel3DSearchScene, 0.03, 0, [], [], Score, DeformableSurfaceMatchingResult)</l>
+<c>    * </c>
+<c>    * Get the deformed and aligned reference model</c>
+<l>    get_deformable_surface_matching_result (DeformableSurfaceMatchingResult, 'deformed_model', 0, ObjectModel3DDeformed)</l>
+<c>    * </c>
+<c>    * Get the coordinates of the (deformed) reference points</c>
+<l>    get_deformable_surface_matching_result (DeformableSurfaceMatchingResult, 'reference_point_x', 'all', ReferencePointXDeformed)</l>
+<l>    get_deformable_surface_matching_result (DeformableSurfaceMatchingResult, 'reference_point_y', 'all', ReferencePointYDeformed)</l>
+<l>    get_deformable_surface_matching_result (DeformableSurfaceMatchingResult, 'reference_point_z', 'all', ReferencePointZDeformed)</l>
+<c>    * </c>
+<c>    * Visualize the matching result</c>
+<l>    gen_object_model_3d_from_points (ReferencePointXDeformed, ReferencePointYDeformed, ReferencePointZDeformed, ObjectModel3DReferencePointsDeformed)</l>
+<l>    Title := 'Step 3: Search for deformed model instances\n \nMatched and deformed reference object model (blue)\nand deformed reference points (green)'</l>
+<l>    visualize_object_model_3d (WindowHandle, [ObjectModel3DDeformed,ObjectModel3DSearchScene,ObjectModel3DReferencePointsDeformed], VisCamParam, PoseOut, [VisRefParName,'color_1', 'color_2', 'point_size_2'], [VisRefParValue,'white', 'green', 10], Title, [], [], PoseOut)</l>
+<c>    * </c>
+<c>    * Visualize the deformations</c>
+<l>    get_deformable_surface_matching_result (DeformableSurfaceMatchingResult, 'rigid_pose', 0, Pose)</l>
+<l>    rigid_trans_object_model_3d (ObjectModel3DReference, Pose, ObjectModel3DRigidTrans)</l>
+<l>    get_object_model_3d_params (ObjectModel3DDeformed, 'point_coord_x', DRX)</l>
+<l>    get_object_model_3d_params (ObjectModel3DDeformed, 'point_coord_y', DRY)</l>
+<l>    get_object_model_3d_params (ObjectModel3DDeformed, 'point_coord_z', DRZ)</l>
+<l>    get_object_model_3d_params (ObjectModel3DRigidTrans, 'point_coord_x', RTX)</l>
+<l>    get_object_model_3d_params (ObjectModel3DRigidTrans, 'point_coord_y', RTY)</l>
+<l>    get_object_model_3d_params (ObjectModel3DRigidTrans, 'point_coord_z', RTZ)</l>
+<l>    Deformation := sqrt((DRX - RTX) * (DRX - RTX) + (DRY - RTY) * (DRY - RTY) + (DRZ - RTZ) * (DRZ - RTZ))</l>
+<l>    set_object_model_3d_attrib_mod (ObjectModel3DDeformed, '&amp;deformation', 'points', Deformation)</l>
+<l>    Title := 'Step 3: Search for deformed model instances\n \nDeformed reference object model\n(color coded, red indicates large deformations)'</l>
+<c>    * Use lower part of color1 LUT to visualize green..red</c>
+<l>    visualize_object_model_3d (WindowHandle, ObjectModel3DDeformed, VisCamParam, PoseOut, ['color_attrib', 'color_attrib_start', 'color_attrib_end', 'lut'], ['&amp;deformation', 0.02, -0.02, 'color1'], Title, [], [], PoseOut)</l>
+<l>endfor</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="orient_normals_towards_direction">
+<interface>
+<ic>
+<par name="Smooth0" base_type="ctrl" dimension="0"/>
+<par name="Target" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<l>get_object_model_3d_params (Smooth0, 'point_normal_x', NX)</l>
+<l>get_object_model_3d_params (Smooth0, 'point_normal_y', NY)</l>
+<l>get_object_model_3d_params (Smooth0, 'point_normal_z', NZ)</l>
+<l>Dot := NX * Target[0] + NY * Target[1] + NZ * Target[2]</l>
+<l>Sign := (Dot [&gt;=] 0) * 2 - 1</l>
+<l>set_object_model_3d_attrib_mod (Smooth0, 'point_normal_' + ['x', 'y', 'z'], [], [NX,NY,NZ] * [Sign,Sign,Sign])</l>
+<l>return ()</l>
+</body>
+<docu id="orient_normals_towards_direction">
+<parameters>
+<parameter id="Smooth0">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<sem_type>object_model_3d</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="Target">
+<default_value>[0,0,1]</default_value>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="preprocess_object_model_3d">
+<interface>
+<ic>
+<par name="ObjectModel3D" base_type="ctrl" dimension="0"/>
+<par name="RemoveBackgroundPlane" base_type="ctrl" dimension="0"/>
+<par name="Smooth" base_type="ctrl" dimension="0"/>
+<par name="ReorientNormals" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="ReferenceModelExt" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* Define some parameters</c>
+<l>create_pose (0.04765, -0.0071, 0.9388, 340.5837, 1.8518, 0.0, 'Rp+T', 'gba', 'point', PlanePose)</l>
+<l>MinDistanceToPlane := 0.015</l>
+<l>MaxDistanceBetweenPoints := 0.001</l>
+<l>MinNumPoints := 1000</l>
+<l>NormalDirection := [0, 0, -1]</l>
+<c></c>
+<l>if (RemoveBackgroundPlane == 'true')</l>
+<c>    * Create a plane from the given approximate plane pose</c>
+<l>    gen_plane_object_model_3d (PlanePose, [], [], ObjectModel3DPlane)</l>
+<c>    * Calculate the distance of the individual points from that plane</c>
+<l>    distance_object_model_3d (ObjectModel3D, ObjectModel3DPlane, [], 0, [], [])</l>
+<l>    get_object_model_3d_params (ObjectModel3D, '&amp;distance', Distances)</l>
+<c>    * Select all points further away from the plane than the</c>
+<c>    * predefined threshold</c>
+<l>    select_points_object_model_3d (ObjectModel3D, '&amp;distance', MinDistanceToPlane, max(Distances), ObjectModel3DThresholded)</l>
+<l>    connection_object_model_3d (ObjectModel3DThresholded, 'distance_3d', MaxDistanceBetweenPoints, ObjectModel3DConnected)</l>
+<l>    select_object_model_3d (ObjectModel3DConnected, 'num_points', 'and', MinNumPoints, |Distances|, ObjectModel3DSelected)</l>
+<l>    union_object_model_3d (ObjectModel3DSelected, 'points_surface', UnionObjectModel3D)</l>
+<l>else</l>
+<l>    copy_object_model_3d (ObjectModel3D, 'all', UnionObjectModel3D)</l>
+<l>endif</l>
+<c></c>
+<c>* Smooth the object model</c>
+<l>if (Smooth == 'true')</l>
+<l>    smooth_object_model_3d (UnionObjectModel3D, 'mls', [], [], ReferenceModelExt)</l>
+<l>else</l>
+<l>    ReferenceModelExt := UnionObjectModel3D</l>
+<l>endif</l>
+<c></c>
+<c>* Reorient the normals towards the predefined direction</c>
+<l>if (ReorientNormals == 'true')</l>
+<l>orient_normals_towards_direction (ReferenceModelExt, NormalDirection)</l>
+<l>endif</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="preprocess_object_model_3d">
+<parameters>
+<parameter id="ObjectModel3D"/>
+<parameter id="ReferenceModelExt"/>
+<parameter id="RemoveBackgroundPlane"/>
+<parameter id="ReorientNormals"/>
+<parameter id="Smooth"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

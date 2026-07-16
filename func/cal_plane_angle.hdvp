@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.05.0.0">
+<procedure name="cal_plane_angle">
+<interface>
+<io>
+<par name="OriginImage" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="GrayvalArray" base_type="ctrl" dimension="1"/>
+<par name="ObjectModel3Ds" base_type="ctrl" dimension="0"/>
+<par name="ZScale" base_type="ctrl" dimension="0"/>
+<par name="IsDebug" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="PlaneAngle" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>Count := GrayvalArray.length()</l>
+<l>ZMin := []</l>
+<l>for Index := 0 to Count - 1 by 1</l>
+<l>    ZMin := [ZMin,min(GrayvalArray.at(Index))]</l>
+<l>endfor</l>
+<c></c>
+<l>min_max_gray (OriginImage, OriginImage, 0, Min, Max, Range)</l>
+<l>threshold (OriginImage, Region, 1, Max)</l>
+<l>reduce_domain (OriginImage, Region, ImageReduced)</l>
+<l>convert_image_type (ImageReduced, Z, 'real')</l>
+<l>min_max_gray (Z, Z, 0, Min, Max, Range)</l>
+<c></c>
+<l>FinalObjectModel3Ds := []</l>
+<l>for Index := 0 to Count - 1 by 1</l>
+<l>    d := (ZMin[Index] - Min) * ZScale</l>
+<l>    TransPose := [0,0,d,0,0,0,0]</l>
+<l>    rigid_trans_object_model_3d (ObjectModel3Ds[Index], TransPose, ObjectModel3DRigidTrans)</l>
+<l>    FinalObjectModel3Ds := [FinalObjectModel3Ds,ObjectModel3DRigidTrans]</l>
+<l>endfor</l>
+<c></c>
+<l>if(IsDebug)</l>
+<l>    visParamName := ['alpha_0','intensity','color_2','color_1']</l>
+<l>    visParamValue := [0.7,'coord_z','red','yellow']</l>
+<l>    dev_get_window (WindowHandle)</l>
+<l>    visualize_object_model_3d (WindowHandle, [ObjectModel3Ds[2],FinalObjectModel3Ds], \
+                               [], [], visParamName, visParamValue, [], [], [], PoseOut)</l>
+<l>endif</l>
+<c></c>
+<c>*------------------------------测量面处理----------------------------</c>
+<l>sample_object_model_3d (FinalObjectModel3Ds[0], 'fast', 1, [], [], SampledObjectModel3D)</l>
+<l>moments_object_model_3d (SampledObjectModel3D, 'principal_axes', Moments)</l>
+<l>pose_invert (PoseOut, PoseInvert)</l>
+<l>pose_to_hom_mat3d (PoseInvert, HomMat3D)</l>
+<c></c>
+<l>affine_trans_object_model_3d (SampledObjectModel3D, HomMat3D, ObjectModel3DAffineTrans)</l>
+<l>get_plane_func (ObjectModel3DAffineTrans, IsDebug, A, B, C, D)</l>
+<l>stop()</l>
+<l>tmp := sqrt(A * A + B * B + C * C)</l>
+<l>A := A / tmp</l>
+<l>B := B / tmp</l>
+<l>C := C / tmp</l>
+<c>* 基准平面的向量</c>
+<l>n_A := [A,B,C]</l>
+<l>ab1 := C</l>
+<l>s1 := sqrt(1 * 1) * sqrt(A * A + B * B + C * C)</l>
+<l>cosTheta1 := ab1 / s1</l>
+<c>* 如果是钝角，转成锐角</c>
+<l>if(cosTheta1 &lt; 0)</l>
+<l>    n_A := - n_A</l>
+<l>endif</l>
+<c></c>
+<c>*------------------------------基准面处理----------------------------</c>
+<l>sample_object_model_3d (FinalObjectModel3Ds[1], 'fast', 1, [], [], SampledObjectModel3D1)</l>
+<l>affine_trans_object_model_3d (SampledObjectModel3D1, HomMat3D, ObjectModel3DAffineTrans1)</l>
+<c></c>
+<l>get_plane_func (ObjectModel3DAffineTrans1, IsDebug, A1, B1, C1, D1)</l>
+<c></c>
+<l>tmp1 := sqrt(A1 * A1 + B1 * B1 + C1 * C1)</l>
+<l>A1 := A1 / tmp1</l>
+<l>B1 := B1 / tmp1</l>
+<l>C1 := C1 / tmp1</l>
+<c></c>
+<l>n_B := [A1,B1,C1]</l>
+<l>ab2 := C1</l>
+<l>s2 := sqrt(1 * 1) * sqrt(A1* A1 + B1 * B1 + C1 * C1)</l>
+<l>cosTheta2 := ab2 / s2</l>
+<l>if(cosTheta2 &lt; 0)</l>
+<l>    n_B := -n_B</l>
+<l>endif</l>
+<c></c>
+<l>ab3 := n_A[0] * n_B[0] + n_A[1] * n_B[1] + n_A[2] * n_B[2] </l>
+<l>s3 := sqrt(n_A[0] * n_A[0] + n_A[1] * n_A[1] + n_A[2] * n_A[2]) * \
+      sqrt(n_B[0] * n_B[0] + n_B[1] * n_B[1] + n_B[2] * n_B[2])</l>
+<c></c>
+<l>cosTheta3 := ab3 / s3</l>
+<l>stop()</l>
+<l>radAB := acos(cosTheta3)</l>
+<l>PlaneAngle := deg(radAB)</l>
+<c></c>
+<l>if(IsDebug)</l>
+<l>    union_object_model_3d (FinalObjectModel3Ds, 'points_surface', UnionObjectModel3D)</l>
+<l>    get_object_models_center (UnionObjectModel3D, Center)</l>
+<l>    gen_sphere_object_model_3d_center (Center[0], Center[1], Center[2], 0.5, SphereModel3D)</l>
+<c>    </c>
+<l>    visParamName := ['lut','alpha_0','intensity','color_2','color_1']</l>
+<l>    visParamValue := ['hsi',0.7,'coord_z','red','yellow']</l>
+<l>    Labels := ['','','','平面夹角:'+PlaneAngle+'°']</l>
+<l>    set_display_font (WindowHandle, 16, 'mono', 'true', 'false')</l>
+<l>    visualize_object_model_3d (WindowHandle, [ObjectModel3Ds[2],FinalObjectModel3Ds,SphereModel3D], [],\
+                               [], visParamName, visParamValue, [], [], [], PoseOut1)</l>
+<l>endif</l>
+<c></c>
+<l>clear_object_model_3d (SphereModel3D)</l>
+<l>clear_object_model_3d (FinalObjectModel3Ds)</l>
+<l>clear_object_model_3d (ObjectModel3Ds)</l>
+<l>return ()</l>
+</body>
+<docu id="cal_plane_angle">
+<parameters>
+<parameter id="GrayvalArray"/>
+<parameter id="IsDebug"/>
+<parameter id="ObjectModel3Ds"/>
+<parameter id="OriginImage"/>
+<parameter id="PlaneAngle"/>
+<parameter id="ZScale"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

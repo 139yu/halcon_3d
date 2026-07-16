@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.11.1.0">
+<procedure name="gen_3d_volumn">
+<interface>
+<io>
+<par name="Retangle" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="TriangulatedObjectModel3D" base_type="ctrl" dimension="0"/>
+<par name="CameraParam" base_type="ctrl" dimension="0"/>
+<par name="Pose" base_type="ctrl" dimension="0"/>
+<par name="Scale" base_type="ctrl" dimension="0"/>
+<par name="WindowHandle" base_type="ctrl" dimension="0"/>
+<par name="ObjectModel3D" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="m_volumn" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>PoseOut := Pose</l>
+<c>* 用当前选定的相机参数和位姿生成3D模型的xyz图像</c>
+<l>object_model_3d_to_xyz (X, Y, Z,TriangulatedObjectModel3D,'cartesian_faces', CameraParam, PoseOut)</l>
+<l>dev_clear_window ()</l>
+<l>dev_display (Z)</l>
+<l>dev_display(Retangle)</l>
+<c></c>
+<l>reduce_domain (Z, Retangle, ImageReduced)</l>
+<c></c>
+<l>xyz_to_object_model_3d (X, Y, ImageReduced, ROIObjectModel3D)</l>
+<c></c>
+<l>xyz_to_object_model_3d (X, Y, Z, IntermediateObjectModel3D)</l>
+<c></c>
+<c>* 模型对齐</c>
+<l>pose_invert (PoseOut, PoseInvert)</l>
+<l>rigid_trans_object_model_3d (IntermediateObjectModel3D, PoseInvert, ObjectModel3DRigidTrans)</l>
+<l>rigid_trans_object_model_3d (ROIObjectModel3D, PoseInvert, ROIObjectModel3D)</l>
+<c></c>
+<c>* 生成最小外接盒子</c>
+<l>get_object_models_center (ROIObjectModel3D, Center)</l>
+<l>get_object_model_3d_params (ROIObjectModel3D, 'bounding_box1', ROIValue)</l>
+<l>PoseBox := [Center[0],Center[1],Center[2],0,0,0,0]</l>
+<c>* 最小外接盒子高度留空隙</c>
+<l>BoxHeight := 0.5 / Scale</l>
+<c>* 最小外接盒子3D模型</c>
+<l>gen_box_object_model_3d (PoseBox,ROIValue[3] - ROIValue[0],ROIValue[4] -ROIValue[1],\
+                         ROIValue[5] -ROIValue[2] + BoxHeight, ObjectModel3DBox)</l>
+<c>* 生成底部参考平面</c>
+<l>VisualizationPlaneSizeX := (ROIValue[3] - ROIValue[0]) / 2</l>
+<l>VisualizationPlaneSizeY := (ROIValue[4] - ROIValue[1]) / 2</l>
+<c>* 调整基准平面的高度</c>
+<l>Plane_Height := 0</l>
+<c></c>
+<l>PosePlane := [Center[0],Center[1],ROIValue[2] + Plane_Height,0,0,0,0]</l>
+<c></c>
+<l>gen_plane_object_model_3d (PosePlane, [-1,-1,1,1] * VisualizationPlaneSizeX, \
+                           [-1,1,1,-1] * VisualizationPlaneSizeY, ObjectModel3DPlane)</l>
+<c></c>
+<l>triangulate_object_model_3d(ROIObjectModel3D,'xyz_mapping',[],[],ROIObjectModel3DTriangulate,Information)</l>
+<c></c>
+<l>ox_roi_color := 'yellow'</l>
+<c></c>
+<l>VisParamNames := ['intensity','alpha_1','color_1','color_2','color_3']</l>
+<l>VisParamValues := ['coord_z',0.4,ox_roi_color,'green','blue']</l>
+<c></c>
+<l>all_objects := [ObjectModel3DBox,ObjectModel3DPlane,ROIObjectModel3DTriangulate]</l>
+<l>visualize_object_model_3d (WindowHandle, [ROIObjectModel3D,all_objects], [], [], VisParamNames, VisParamValues, \
+                           [], [], [], PoseOut1)</l>
+<c></c>
+<l>visualize_object_model_3d (WindowHandle, [ObjectModel3D,all_objects], CameraParam, PoseOut,\
+                           VisParamNames,VisParamValues, [], [], [], PoseOut2)</l>
+<c></c>
+<l>volume_object_model_3d_relative_to_plane (ROIObjectModel3DTriangulate, PosePlane, 'signed', 'true',Volumn)</l>
+<c>* depth_image_to_pointcloud中X/Y/Z已统一为mm，这里体积直接是mm^3</c>
+<l>m_volumn := abs(Volumn) / Scale * 0.001 / Scale * 0.001 * 0.01</l>
+<l>stop()</l>
+<l>return ()</l>
+</body>
+<docu id="gen_3d_volumn">
+<parameters>
+<parameter id="CameraParam"/>
+<parameter id="ObjectModel3D"/>
+<parameter id="Pose"/>
+<parameter id="Retangle"/>
+<parameter id="Scale"/>
+<parameter id="TriangulatedObjectModel3D"/>
+<parameter id="WindowHandle"/>
+<parameter id="m_volumn"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

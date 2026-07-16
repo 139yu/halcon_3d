@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>gen_object_model_3d_from_points (rand(200),rand(200) ,rand(200) , ObjectModel3D)</l>
+<c>* 获取最大凸包距离，如长方体计算的是对角线距离</c>
+<l>max_diameter_object_model_3d (ObjectModel3D, Diameter)</l>
+<c></c>
+<l>get_object_model_3d_params (ObjectModel3D, 'num_points', PointCount)</l>
+<c></c>
+<c></c>
+<l>get_object_model_3d_params (ObjectModel3D, 'center', Center)</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>

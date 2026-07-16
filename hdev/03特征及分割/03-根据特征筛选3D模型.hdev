@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<c>* ************************************************************</c>
+<c>* This example program shows how to use the operators</c>
+<c>* connection_object_model_3d and select_object_model_3d</c>
+<c>* in HALCON. First, a threshold is applied to the 3D object</c>
+<c>* model. Then, the connected components are calculated</c>
+<c>* based on the geometric distance. Finally, the connected</c>
+<c>* components are selected by their volume and diameter and</c>
+<c>* the result is displayed.</c>
+<c>* ************************************************************</c>
+<c>* </c>
+<c></c>
+<l>dev_close_window ()</l>
+<c>* Load X,Y,Z-Data, scale them to meter and generate a 3D object model</c>
+<l>ImagePath := 'time_of_flight/'</l>
+<l>read_image (Image, ImagePath + 'engine_cover_xyz_01')</l>
+<l>scale_image (Image, Image, .001, .0)</l>
+<l>zoom_image_factor (Image, Image, 2, 2, 'constant')</l>
+<l>decompose3 (Image, X, Y, Z)</l>
+<l>xyz_to_object_model_3d (X, Y, Z, ObjectModel3DID)</l>
+<c>* Compute a mesh (Delauney triangulation) of the model</c>
+<l>prepare_object_model_3d (ObjectModel3DID, 'segmentation', 'true', [], [])</l>
+<c>* </c>
+<c>* Prepare the visualization and display the 3D object model</c>
+<l>create_pose (0.058, -0.165, 0.660, 345.0, 355.0, 356.0, 'Rp+T', 'gba', 'point', Pose)</l>
+<c>* </c>
+<c>* Instructions for visualize_object_model_3d</c>
+<l>Instructions[0] := 'Rotate: Left button'</l>
+<l>Instructions[1] := 'Zoom:   Shift + left button'</l>
+<l>Instructions[2] := 'Move:   Ctrl  + left button'</l>
+<c>* Configuration</c>
+<l>gen_cam_par_area_scan_division (0.01, 0, 7e-6, 7e-6, 352, 288, 710, 576, CamParam)</l>
+<l>GenParamName := ['color', 'disp_pose', 'alpha']</l>
+<l>GenParamValue := ['green', 'false', 0.8]</l>
+<c>* </c>
+<l>dev_open_window (0, 0, 710, 576, 'black', WindowHandle)</l>
+<l>set_display_font (WindowHandle, 16, 'mono', 'true', 'false')</l>
+<c>* </c>
+<l>visualize_object_model_3d (WindowHandle, ObjectModel3DID, CamParam, Pose, GenParamName, GenParamValue, 'This scene will be segmented into single objects', [], Instructions, Pose)</l>
+<c>* </c>
+<c>* Threshold the 3D object Model</c>
+<c>* 通过阈值去除背景</c>
+<l>MinValue := 0.500</l>
+<l>MaxValue := 0.670</l>
+<c>* 通过z方向点获取z的最大最小值，这里背景在上，高度在下，所以去背景调整ZMax的值</c>
+<l>get_object_model_3d_params (ObjectModel3DID, 'point_coord_z', PointCoordZ)</l>
+<l>ZMin := min(PointCoordZ)</l>
+<l>ZMax := max(PointCoordZ)</l>
+<c>* 按照3d坐标筛选</c>
+<l>select_points_object_model_3d (ObjectModel3DID, 'point_coord_z', MinValue, MaxValue, ObjectModel3DIDReduced)</l>
+<l>visualize_object_model_3d (WindowHandle, ObjectModel3DIDReduced, CamParam, Pose, GenParamName, GenParamValue, 'Result after thresholding at z=' + (MaxValue * 1e3)$'.3' + 'mm from the camera', [], Instructions, Pose)</l>
+<c>* </c>
+<c>* Calculate the connected components and the volume and diameter</c>
+<c>* of each of the resulting object</c>
+<l>GenParamName[0] := 'colored'</l>
+<l>GenParamValue[0] := 12</l>
+<c>* 求连通域，'distance_3d'：基于欧式距离，0.010：两点欧氏距离小于此值，认为他们是连通的</c>
+<l>connection_object_model_3d (ObjectModel3DIDReduced, 'distance_3d', 0.010, ObjectModel3DIDConnections)</l>
+<c>* 计算3维模型中所有面片相对于某一参考平面的体积</c>
+<l>volume_object_model_3d_relative_to_plane (ObjectModel3DIDConnections, \
+                                          [0, 0,MaxValue,0, 0, 0, 0], 'signed', 'true', Volume)</l>
+<l>max_diameter_object_model_3d (ObjectModel3DIDConnections, Diameter)</l>
+<c>* </c>
+<c>* Display the results</c>
+<l>dev_open_window (0, 720, 400, 576, 'black', WindowHandle1)</l>
+<l>set_display_font (WindowHandle1, 14, 'mono', 'true', 'false')</l>
+<l>Indices := [0:|ObjectModel3DIDConnections| - 1]</l>
+<l>disp_message (WindowHandle1, ['Features of the connected components:', ' ', ' '], 'window', 12, 12, 'white', 'false')</l>
+<l>ResultMessage := '  #  Max. diameter    Volume'</l>
+<l>Sequence := [0:|ObjectModel3DIDConnections| - 1]</l>
+<l>ResultMessage := [ResultMessage,Sequence$' 3' + '     ' + (Diameter * 1e3)$'7.1f' + ' mm  ' + (Volume * 1e3)$'7.3f' + ' dm³']</l>
+<l>disp_message (WindowHandle1, ResultMessage, 'window', 50, 12, 'white', 'false')</l>
+<l>dev_set_window (WindowHandle)</l>
+<c>* Label：可以直接在对于的模型上标注</c>
+<l>visualize_object_model_3d (WindowHandle, ObjectModel3DIDConnections, CamParam, Pose, GenParamName, GenParamValue, 'Found ' + |ObjectModel3DIDConnections| + ' connected components', '#' + Indices, Instructions, Pose)</l>
+<c>* </c>
+<c>* Select components by their volume and maximal diameter</c>
+<c>* </c>
+<l>MinVolume := 0.35e-003</l>
+<l>MaxVolume := 1.0e-003</l>
+<l>MinDiameter := 185.0e-003</l>
+<l>MaxDiameter := 300.0e-003</l>
+<c>* *** Attention:</c>
+<c>*     select_object_model_3d uses the plane [0,0,0,0,0,0]</c>
+<c>*     for the volume calculation! Therefore we have</c>
+<c>*     to transform the 3d object models, so that the</c>
+<c>*     reference plane (as defined in the former call to</c>
+<c>*     volume_object_model_3d_relative_to_plane) coincides to the</c>
+<c>*     default plane.</c>
+<l>hom_mat3d_identity (HomMat3DIdentity)</l>
+<c>* 创建一个基于原点的矩阵</c>
+<l>hom_mat3d_translate (HomMat3DIdentity, 0, 0, -MaxValue, HomMat3DTranslation)</l>
+<c>* 将矩阵进行逆变换</c>
+<l>hom_mat3d_invert (HomMat3DTranslation, HomMat3DInvert)</l>
+<c>* 原点默认在相机镜头的中心位置，仿射变换后，点都在平面上</c>
+<l>affine_trans_object_model_3d (ObjectModel3DIDConnections, HomMat3DTranslation, ObjectModel3DTranslated)</l>
+<c>* Set a label for each part</c>
+<l>for Index := 0 to |ObjectModel3DIDConnections| - 1 by 1</l>
+<c>    * 设置3d模型的属性，属性前必须加&amp;进行引用</c>
+<l>    set_object_model_3d_attrib_mod (ObjectModel3DTranslated[Index], '&amp;Index', [], Index)</l>
+<l>endfor</l>
+<c>* </c>
+<l>volume_object_model_3d_relative_to_plane (ObjectModel3DTranslated, [0, 0, 0, 0, 0, 0, 0], 'signed', 'true', Volume1)</l>
+<l>select_object_model_3d (ObjectModel3DTranslated, ['volume', 'diameter_object'], 'and', [MinVolume,MinDiameter], [MaxVolume,MaxDiameter], ObjectModel3DSelected)</l>
+<c>* </c>
+<l>Title := ['Parts selected by using the following features: ','       ' + (MinVolume * 1e3)$'3.1f' + ' dm³ &lt;= volume &lt;= ' + (MaxVolume * 1e3)$'3.1f' + ' dm³','and:   ' + (MinDiameter * 1e3)$'.1f' + ' mm &lt;= max. diameter &lt;= ' + (MaxDiameter * 1e3)$'.1f' + ' mm']</l>
+<c>* Create the labels</c>
+<l>Label := []</l>
+<l>for Index := 0 to |ObjectModel3DSelected| - 1 by 1</l>
+<l>    get_object_model_3d_params (ObjectModel3DSelected[Index], '&amp;Index', FormerIndex)</l>
+<l>    Label := [Label,'#' + FormerIndex]</l>
+<l>endfor</l>
+<c>* </c>
+<l>if (|ObjectModel3DSelected| &gt; 1)</l>
+<l>    visualize_object_model_3d (WindowHandle, ObjectModel3DSelected, CamParam, [], GenParamName, GenParamValue, Title, Label, Instructions, Pose)</l>
+<l>else</l>
+<l>    Message := 'No object left after using the following features: '</l>
+<l>    Message[1] := '       ' + (MinVolume * 1e3)$'3.1f' + ' dm³ &lt;= volume &lt;= ' + (MaxVolume * 1e3)$'3.1f' + ' dm³'</l>
+<l>    Message[2] := 'and:   ' + (MinDiameter * 1e3)$'.1f' + ' mm &lt;= max. diameter &lt;= ' + (MaxDiameter * 1e3)$'.1f' + ' mm'</l>
+<l>    disp_message (WindowHandle, Message, 'window', 12, 12, 'black', 'true')</l>
+<l>endif</l>
+<c>* </c>
+<l>dev_set_window (WindowHandle1)</l>
+<l>dev_close_window ()</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>

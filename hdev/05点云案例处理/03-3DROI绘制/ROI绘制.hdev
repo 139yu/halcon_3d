@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>read_image (imageReal, './test.tif')</l>
+<c></c>
+<l>xResolution:=0.06</l>
+<l>yResolution:=0.06</l>
+<l>zResolution:=0.001 </l>
+<l>ScaleFactor:=[xResolution,yResolution,zResolution]</l>
+<c></c>
+<c>*深度图转点云图</c>
+<l>depth_map_piontcloud_0 (imageReal, ScaleFactor, 1, ObjectModel3D, scale)</l>
+<c></c>
+<c>*创建3DROI</c>
+<c>** 点云采样</c>
+<l>sample_object_model_3d (ObjectModel3D, 'fast', 3, [], [], SampledObjectModel3D)</l>
+<c>** 将稀疏或不规则的三维点云，重建为连续的、由三角形面片构成的表面网格模型;</c>
+<l>triangulate_object_model_3d (SampledObjectModel3D, 'greedy', [], [], TriangulatedObjectModel3D, Information)</l>
+<c></c>
+<c>* 定义虚拟相机分辨率.</c>
+<l>Width := 600</l>
+<l>Height := 490</l>
+<c></c>
+<l>dev_close_window ()</l>
+<l>dev_open_window (0, 0, Width, Height, 'black', WindowHandle)</l>
+<l>* dev_get_window( WindowHandle)</l>
+<c>* 定义一个系数用于在3D模型中计算图像的边缘</c>
+<l>BorderFact := 1.5</l>
+<c></c>
+<c>* 是否选择镜头.</c>
+<l>IsTelecentric := false</l>
+<c></c>
+<c>* 定义相机参数以及初始位姿.</c>
+<l>get_cam_par_and_pose (IsTelecentric, ObjectModel3D, BorderFact, Width, Height, PoseInit, CameraParam)   </l>
+<c>** 定义显示3D点云数据的属性名称及对应值</c>
+<l>GenParamName := ['lut','intensity','disp_pose_0','alpha_0','disp_background']</l>
+<l>GenParamValue := ['hsi','coord_z','true',0.3,'true']</l>
+<c></c>
+<l>gen_image_const(Image,'byte',Width,Height)</l>
+<l>gen_image_proto(Image,ImageCleared1,0)</l>
+<l>gen_image_proto(Image,ImageCleared2,0)</l>
+<l>gen_image_proto(Image,ImageCleared3,0)</l>
+<l>compose3(ImageCleared1,ImageCleared2,ImageCleared3,MultiImage)</l>
+<c></c>
+<l>dev_display (MultiImage)</l>
+<l>visualize_object_model_3d (WindowHandle, [ObjectModel3D], CameraParam,\
+                           PoseInit, GenParamName, GenParamValue, '请选择绘制ROI的区域', [], [], Pose)</l>
+<c></c>
+<l>stop ()</l>
+<c></c>
+<c>* ROI区域</c>
+<l>create_drawing_object_rectangle2 (270, 270, rad(90), 30, 20, DrawID)</l>
+<l>set_drawing_object_params (DrawID, 'color', 'yellow')</l>
+<l>set_drawing_object_params (DrawID, 'line_width', 1)</l>
+<l>attach_drawing_object_to_window (WindowHandle, DrawID)</l>
+<c></c>
+<l>stop ()</l>
+<c></c>
+<l>dev_set_color ('yellow')</l>
+<l>get_drawing_object_params (DrawID, ['row','column','phi','length1','length2'], GenParamValue)</l>
+<l>gen_rectangle2 (Rectangle,GenParamValue[0], GenParamValue[1], GenParamValue[2], GenParamValue[3], GenParamValue[4])</l>
+<l>detach_drawing_object_from_window (WindowHandle, DrawID)    </l>
+<c></c>
+<c>*生成3DROI</c>
+<l>* gen_3d_roi (Rectangle, TriangulatedObjectModel3D, CameraParam, Pose, scale, WindowHandle, ObjectModel3D)</l>
+<c></c>
+<l>PoseOut := PoseInit</l>
+<c></c>
+<l>object_model_3d_to_xyz (X, Y, Z, TriangulatedObjectModel3D, 'cartesian_faces', CameraParam, PoseOut)</l>
+<c></c>
+<l>dev_display(Z)</l>
+<c></c>
+<l>reduce_domain (Z, Rectangle, ImageReduced)</l>
+<c></c>
+<l>xyz_to_object_model_3d (X, Y, ImageReduced, ObjectModel3DReduce)</l>
+<c></c>
+<l>xyz_to_object_model_3d (X, Y, Z, ObjectModel3D1)</l>
+<c></c>
+<l>pose_invert (PoseOut, PoseInvert)</l>
+<c></c>
+<l>rigid_trans_object_model_3d (ObjectModel3D1, PoseInvert, ObjectModel3DRigidTrans)</l>
+<c></c>
+<l>rigid_trans_object_model_3d (ObjectModel3DReduce, PoseInvert, ObjectModel3DROI)</l>
+<c></c>
+<l>stop()</l>
+<c></c>
+<l>get_object_models_center (ObjectModel3DROI, Center)</l>
+<c>* 获取盒子数据</c>
+<l>get_object_model_3d_params (ObjectModel3DROI, 'bounding_box1', valueROI)</l>
+<c></c>
+<l>PoseBox := [Center[0],Center[1],Center[2],0,0,0,0]</l>
+<c>* 让盒子和模型存在一定的高度差</c>
+<l>box_height := 0.3 / scale</l>
+<c>* 生成3d盒子模型</c>
+<l>gen_box_object_model_3d (PoseBox, valueROI[3] - valueROI[0], valueROI[4] - valueROI[1], \
+                         valueROI[5] - valueROI[2] + box_height, ObjectModel3DBox)</l>
+<l>box_roi_color := 'yellow'</l>
+<l>VisParamNames := ['intensity','color_1','alpha_1']</l>
+<l>VisParamValues := ['coord_z',box_roi_color,0.3]</l>
+<c></c>
+<l>visualize_object_model_3d (WindowHandle, [ObjectModel3DROI,ObjectModel3DBox], CameraParam, PoseOut, VisParamNames, VisParamValues, '3D ROI效果', [], [], PoseOut1)</l>
+<c></c>
+<l>visualize_object_model_3d (WindowHandle, [ObjectModel3DROI,ObjectModel3DBox,ObjectModel3DRigidTrans], CameraParam, PoseOut, VisParamNames, VisParamValues, '3D ROI效果', [], [], PoseOut1)</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="get_cam_par_and_pose">
+<interface>
+<ic>
+<par name="IsTelecentric" base_type="ctrl" dimension="0"/>
+<par name="ObjectModel3D" base_type="ctrl" dimension="0"/>
+<par name="BorderFact" base_type="ctrl" dimension="0"/>
+<par name="Width" base_type="ctrl" dimension="0"/>
+<par name="Height" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="PoseInit" base_type="ctrl" dimension="0"/>
+<par name="CameraParam" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* This procedure automatically defines camera parameters and</c>
+<c>* a camera pose, such that the input 3D object model is</c>
+<c>* completely visible for the camera.</c>
+<c></c>
+<l>if (IsTelecentric)</l>
+<c>    * Define a camera pose centered above the 3D object model.</c>
+<l>    get_object_model_3d_params (ObjectModel3D, 'bounding_box1', BB1)</l>
+<l>    max_diameter_object_model_3d (ObjectModel3D, Diameter)</l>
+<l>    create_pose (-(BB1[0] + BB1[3]) / 2, -(BB1[1] + BB1[4]) / 2, -BB1[2] + Diameter, 0, 0, 0, 'Rp+T', 'gba', 'point', PoseInit)</l>
+<c></c>
+<c>    * Define a large enough telecentric camera.</c>
+<l>    rigid_trans_object_model_3d (ObjectModel3D, PoseInit, ObjectModel3DRigidTrans1)</l>
+<l>    get_object_model_3d_params (ObjectModel3DRigidTrans1, 'bounding_box1', BBRigidTrans1)</l>
+<l>    SX := (BB1[3] - BB1[0]) * BorderFact / Width</l>
+<l>    SY := (BB1[4] - BB1[1]) * BorderFact / Height</l>
+<l>gen_cam_par_area_scan_telecentric_division (1.0, 0, SX, SY, Width / 2, Height / 2, Width, Height, CameraParam)</l>
+<l>else</l>
+<c>    * Define camera parameters (pinhole camera model).</c>
+<c>    * * 定义相机内参及获取相机内参中相关的属性数据集</c>
+<l>gen_cam_par_area_scan_division (0.008, 0, 5.2e-006, 5.2e-006, Width / 2, Height / 2, Width, Height, CameraParam)</l>
+<l>get_cam_par_data (CameraParam, 'focus', Focus)</l>
+<l>get_cam_par_data (CameraParam, 'sx', SX)</l>
+<l>get_cam_par_data (CameraParam, 'sy', SY)</l>
+<c></c>
+<c>    * Define a camera pose centered above the 3D object model.</c>
+<l>    get_object_model_3d_params (ObjectModel3D, 'bounding_box1', BB1)</l>
+<l>    OffsetForX := Focus * (BB1[3] - BB1[0]) / (Width * SX / BorderFact)</l>
+<l>    OffsetForY := Focus * (BB1[4] - BB1[1]) / (Height * SY / BorderFact)</l>
+<l>    Offset := max([OffsetForX,OffsetForY])</l>
+<l>    create_pose (-(BB1[0] + BB1[3]) / 2, -(BB1[1] + BB1[4]) / 2, -BB1[2] + Offset, 0, 0, 0, 'Rp+T', 'gba', 'point', PoseInit)</l>
+<l>endif</l>
+<l>return ()</l>
+</body>
+<docu id="get_cam_par_and_pose">
+<parameters>
+<parameter id="BorderFact"/>
+<parameter id="CameraParam"/>
+<parameter id="Height"/>
+<parameter id="IsTelecentric"/>
+<parameter id="ObjectModel3D"/>
+<parameter id="PoseInit"/>
+<parameter id="Width"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="gen_corner_boxs">
+<interface>
+<ic>
+<par name="Center" base_type="ctrl" dimension="0"/>
+<par name="valueROI" base_type="ctrl" dimension="0"/>
+<par name="box_height" base_type="ctrl" dimension="0"/>
+<par name="boxSizes" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="corners_ObjBoxs" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>corners_ObjBoxs := []</l>
+<l>if (1)</l>
+<l>    L1 := Center[0]+(valueROI[3]-valueROI[0])/2</l>
+<l>    L2 := Center[1]+(valueROI[4]-valueROI[1])/2</l>
+<l>    L3 := Center[2]+(valueROI[5]-valueROI[2]+box_height)/2</l>
+<l>    Posebox := [L1,L2,L3,0,0,0,0]</l>
+<l>    gen_box_object_model_3d (Posebox, boxSizes, boxSizes, boxSizes, ObjectModel3DBox1)</l>
+<l>    corners_ObjBoxs := [corners_ObjBoxs,ObjectModel3DBox1]</l>
+<c></c>
+<l>    L1 := Center[0]-(valueROI[3]-valueROI[0])/2</l>
+<l>    L2 := Center[1]-(valueROI[4]-valueROI[1])/2</l>
+<l>    L3 := Center[2]+(valueROI[5]-valueROI[2]+box_height)/2</l>
+<l>    Posebox := [L1,L2,L3,0,0,0,0]</l>
+<l>    gen_box_object_model_3d (Posebox, boxSizes, boxSizes, boxSizes, ObjectModel3DBox1)</l>
+<l>    corners_ObjBoxs := [corners_ObjBoxs,ObjectModel3DBox1]</l>
+<c></c>
+<l>    L1 := Center[0]-(valueROI[3]-valueROI[0])/2</l>
+<l>    L2 := Center[1]+(valueROI[4]-valueROI[1])/2</l>
+<l>    L3 := Center[2]+(valueROI[5]-valueROI[2]+box_height)/2</l>
+<l>    Posebox := [L1,L2,L3,0,0,0,0]</l>
+<l>    gen_box_object_model_3d (Posebox, boxSizes, boxSizes, boxSizes, ObjectModel3DBox1)</l>
+<l>    corners_ObjBoxs := [corners_ObjBoxs,ObjectModel3DBox1]</l>
+<c></c>
+<l>    L1 := Center[0]+(valueROI[3]-valueROI[0])/2</l>
+<l>    L2 := Center[1]-(valueROI[4]-valueROI[1])/2</l>
+<l>    L3 := Center[2]+(valueROI[5]-valueROI[2]+box_height)/2</l>
+<l>    Posebox := [L1,L2,L3,0,0,0,0]</l>
+<l>    gen_box_object_model_3d (Posebox, boxSizes, boxSizes, boxSizes, ObjectModel3DBox1)</l>
+<l>    corners_ObjBoxs := [corners_ObjBoxs,ObjectModel3DBox1]</l>
+<c></c>
+<l>    L1 := Center[0]+(valueROI[3]-valueROI[0])/2</l>
+<l>    L2 := Center[1]+(valueROI[4]-valueROI[1])/2</l>
+<l>    L3 := Center[2]-(valueROI[5]-valueROI[2]+box_height)/2</l>
+<l>    Posebox := [L1,L2,L3,0,0,0,0]</l>
+<l>    gen_box_object_model_3d (Posebox, boxSizes, boxSizes, boxSizes, ObjectModel3DBox1)</l>
+<l>    corners_ObjBoxs := [corners_ObjBoxs,ObjectModel3DBox1]</l>
+<c></c>
+<l>    L1 := Center[0]-(valueROI[3]-valueROI[0])/2</l>
+<l>    L2 := Center[1]-(valueROI[4]-valueROI[1])/2</l>
+<l>    L3 := Center[2]-(valueROI[5]-valueROI[2]+box_height)/2</l>
+<l>    Posebox := [L1,L2,L3,0,0,0,0]</l>
+<l>    gen_box_object_model_3d (Posebox, boxSizes, boxSizes, boxSizes, ObjectModel3DBox1)</l>
+<l>    corners_ObjBoxs := [corners_ObjBoxs,ObjectModel3DBox1]</l>
+<c></c>
+<l>    L1 := Center[0]-(valueROI[3]-valueROI[0])/2</l>
+<l>    L2 := Center[1]+(valueROI[4]-valueROI[1])/2</l>
+<l>    L3 := Center[2]-(valueROI[5]-valueROI[2]+box_height)/2</l>
+<l>    Posebox := [L1,L2,L3,0,0,0,0]</l>
+<l>    gen_box_object_model_3d (Posebox, boxSizes, boxSizes, boxSizes, ObjectModel3DBox1)</l>
+<l>    corners_ObjBoxs := [corners_ObjBoxs,ObjectModel3DBox1]</l>
+<c></c>
+<l>    L1 := Center[0]+(valueROI[3]-valueROI[0])/2</l>
+<l>    L2 := Center[1]-(valueROI[4]-valueROI[1])/2</l>
+<l>    L3 := Center[2]-(valueROI[5]-valueROI[2]+box_height)/2</l>
+<l>    Posebox := [L1,L2,L3,0,0,0,0]</l>
+<l>    gen_box_object_model_3d (Posebox, boxSizes, boxSizes, boxSizes, ObjectModel3DBox1)</l>
+<l>    corners_ObjBoxs := [corners_ObjBoxs,ObjectModel3DBox1]</l>
+<l>endif</l>
+<l>return ()</l>
+</body>
+<docu id="gen_corner_boxs">
+<parameters>
+<parameter id="Center"/>
+<parameter id="boxSizes"/>
+<parameter id="box_height"/>
+<parameter id="corners_ObjBoxs"/>
+<parameter id="valueROI"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="gen_3d_roi">
+<interface>
+<io>
+<par name="Rectangle" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="TriangulatedObjectModel3D" base_type="ctrl" dimension="0"/>
+<par name="CameraParam" base_type="ctrl" dimension="0"/>
+<par name="Pose" base_type="ctrl" dimension="0"/>
+<par name="scale" base_type="ctrl" dimension="0"/>
+<par name="WindowHandle" base_type="ctrl" dimension="0"/>
+<par name="ObjectModel3D" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* 将当前姿势 Pose 复制到 PoseOut1 中。</c>
+<c>* 使用给定的相机参数和姿势生成三维模型的 XYZ 图像。</c>
+<c>* 清空显示窗口。</c>
+<c>* 显示图像 Z。</c>
+<c>* 显示矩形 Rectangle。</c>
+<c>* 在图像 Z 中裁剪出矩形范围内的部分，得到裁剪后的图像 ImageReduced。</c>
+<c>* 根据裁剪后的图像 ImageReduced 生成三维对象模型 ROIObjectModel3D。</c>
+<c>* 根据 XYZ 图像生成三维对象模型 IntermediateObjectModel3D。</c>
+<c>* 计算 PoseOut1 的逆姿势，结果存储在 PoseInvert 中。</c>
+<c>* 将简化的对象模型 IntermediateObjectModel3D 与原始模型对齐。</c>
+<c>* 将 ROIObjectModel3D 与原始模型对齐。</c>
+<c>* 获取 ROIObjectModel3D_Trans 的中心点坐标。</c>
+<c>* 获取 ROIObjectModel3D_Trans 的边界框信息。</c>
+<c>* 根据中心点坐标设置一个新的姿势 Posebox。</c>
+<c>* 计算盒子的高度。</c>
+<c>* 生成一个包围 ROI 区域的三维盒子模型 ObjectModel3DBox。</c>
+<c>* 设置顶角小方框的大小。</c>
+<c>* 生成顶角小方框。</c>
+<c>* 设置盒子的颜色为黄色。</c>
+<c>* 设置顶角小方框的颜色为红色。</c>
+<c>* 设置可视化参数名称。</c>
+<c>* 设置可视化参数值。</c>
+<c>* 可视化显示 ROI 区域及其边界框的效果。</c>
+<c>* 综合显示原始三维模型、ROI 盒子以及顶角小方框的效果。</c>
+<c>* 返回执行结果。</c>
+<l>PoseOut1 := Pose</l>
+<c>* 用当前选定的相机参数和姿势生成生成3D模型的XYZ图像</c>
+<l>object_model_3d_to_xyz (X, Y, Z, TriangulatedObjectModel3D, 'cartesian_faces', CameraParam, PoseOut1)</l>
+<l>dev_clear_window ()</l>
+<l>dev_display (Z)</l>
+<l>dev_display (Rectangle)</l>
+<c>* * 使用的锁定不是截取</c>
+<l>reduce_domain (Z, Rectangle, ImageReduced)</l>
+<l>xyz_to_object_model_3d (X, Y, ImageReduced, ROIObjectModel3D)</l>
+<c></c>
+<c>* 把当前XYZ图生成3D模型</c>
+<l>xyz_to_object_model_3d (X, Y, Z, IntermediateObjectModel3D)</l>
+<c></c>
+<c>* 将简化对象模型与原始模型对齐</c>
+<l>pose_invert (PoseOut1, PoseInvert)</l>
+<l>rigid_trans_object_model_3d (IntermediateObjectModel3D, PoseInvert, IntermediateObjectModel3D)</l>
+<l>rigid_trans_object_model_3d (ROIObjectModel3D, PoseInvert, ROIObjectModel3D_Trans)</l>
+<c></c>
+<c>* 获取最小外接盒子</c>
+<l>stop ()</l>
+<c>* * 获取ROI区域的中心坐标</c>
+<l>get_object_models_center (ROIObjectModel3D_Trans, Center)</l>
+<c>* * 获取3D模型边缘的盒子数据</c>
+<l>get_object_model_3d_params (ROIObjectModel3D_Trans, 'bounding_box1', valueROI)</l>
+<l>Posebox := [Center[0],Center[1],Center[2],0,0,0,0]</l>
+<l>box_height := 0.3/scale</l>
+<c>* * 根据前面提供数据生成对应3D盒子模型</c>
+<l>gen_box_object_model_3d (Posebox, valueROI[3]-valueROI[0], valueROI[4]-valueROI[1], valueROI[5]-valueROI[2]+box_height, ObjectModel3DBox)</l>
+<c></c>
+<c>* 顶角小方框大小</c>
+<l>boxSizes := 0.03/scale</l>
+<l>gen_corner_boxs (Center, valueROI, box_height, boxSizes, corners_ObjBoxs)</l>
+<c></c>
+<l>box_roi_color := 'blue'</l>
+<l>box_corner_color := 'cyan'</l>
+<l>VisParamNames := ['intensity','color_1','color_2','color_3','color_4','color_5','color_6','color_7','color_8','color_9','alpha_1']</l>
+<l>VisParamValues := ['coord_z',box_roi_color,box_corner_color,box_corner_color,box_corner_color,box_corner_color,box_corner_color,box_corner_color,box_corner_color,box_corner_color,0.3]</l>
+<l>visualize_object_model_3d (WindowHandle, [ROIObjectModel3D_Trans,ObjectModel3DBox,corners_ObjBoxs], [], [], VisParamNames, VisParamValues, '3DROI框选效果', [], [], PoseOut)</l>
+<c></c>
+<c>* 综合显示</c>
+<l>visualize_object_model_3d (WindowHandle, [ObjectModel3D,ObjectModel3DBox,corners_ObjBoxs], CameraParam, PoseOut1, VisParamNames, VisParamValues, '3DROI效果显示', [], [], PoseOut1)</l>
+<l>return ()</l>
+</body>
+<docu id="gen_3d_roi">
+<parameters>
+<parameter id="CameraParam"/>
+<parameter id="ObjectModel3D"/>
+<parameter id="Pose"/>
+<parameter id="Rectangle"/>
+<parameter id="TriangulatedObjectModel3D"/>
+<parameter id="WindowHandle"/>
+<parameter id="scale"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

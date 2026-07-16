@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.05.0.0">
+<procedure name="get_plane_func">
+<interface>
+<ic>
+<par name="Object3DPlane" base_type="ctrl" dimension="0"/>
+<par name="IsDebug" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="A" base_type="ctrl" dimension="0"/>
+<par name="B" base_type="ctrl" dimension="0"/>
+<par name="C" base_type="ctrl" dimension="0"/>
+<par name="D" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>get_object_model_3d_params (Object3DPlane, 'point_coord_x', PointX)</l>
+<l>get_object_model_3d_params (Object3DPlane, 'point_coord_y', PointY)</l>
+<l>get_object_model_3d_params (Object3DPlane, 'point_coord_z', PointZ)</l>
+<c></c>
+<c>* 提取被测平面上的三个点</c>
+<l>PointCount := |PointX| - 1</l>
+<l>Point1Index := int(0 + rand(1) * PointCount)</l>
+<l>Point2Index := int(0 + rand(1) * PointCount)</l>
+<l>while(Point2Index == Point1Index)</l>
+<l>    Point2Index := int(0 + rad(1) * PointCount)</l>
+<l>endwhile</l>
+<l>Point3Index := int(0 + rand(1) * PointCount)</l>
+<l>while(Point3Index == Point1Index or Point3Index == Point2Index)</l>
+<l>    Point3Index := int(0 + rand(1) * PointCount)</l>
+<l>endwhile</l>
+<c></c>
+<c></c>
+<l>pX := [PointX[Point1Index],PointX[Point2Index],PointX[Point3Index]]</l>
+<l>pY := [PointY[Point1Index],PointY[Point2Index],PointY[Point3Index]]</l>
+<l>pZ := [PointZ[Point1Index],PointZ[Point2Index],PointZ[Point3Index]]</l>
+<c></c>
+<l>PlaneBalls := []</l>
+<c>* 验证3个点不在同一条直线上</c>
+<l>for Index := 0 to 2 by 1</l>
+<l>    gen_sphere_object_model_3d_center (pX[Index], pY[Index], pZ[Index], 1, ObjectModel3DBall)</l>
+<l>    PlaneBalls := [PlaneBalls,ObjectModel3DBall]</l>
+<l>endfor</l>
+<c></c>
+<l>dev_get_window (WindowHandle)</l>
+<l>if(IsDebug == 1)</l>
+<l>    visualize_object_model_3d (WindowHandle, [PlaneBalls,Object3DPlane], \
+    [], [],  ['intensity_red','intensity_green','intensity_blue','disp_pose'], \
+    ['coord_x','coord_y','coord_z','true'], '平面调整至0度', [], [], PoseOut) </l>
+<l>endif</l>
+<l>clear_object_model_3d (PlaneBalls)</l>
+<l>AB := [pX[1] - pX[0],pY[1] - pY[0],pZ[1] - pZ[0]]</l>
+<l>AC := [pX[2] - pX[0],pY[2] - pY[0],pZ[2] - pZ[0]]</l>
+<c>* 向量AB、AC的法向量</c>
+<l>n := [AB[1]* AC[2] - AB[2] * AC[1],AB[2]*AC[0] - AB[0] * AC[2],AB[0] * AC[1] - AB[1] * AC[0]]</l>
+<c>* 判断叉积结果是否为零向量（考虑浮点数误差，使用一个极小容差）</c>
+<l>tolerance := 1e-12</l>
+<l>IsCollinear := (abs(n[0]) &lt;= tolerance) and \
+               (abs(n[1]) &lt;= tolerance) and \
+               (abs(n[2]) &lt;= tolerance)</l>
+<l>if(IsCollinear)</l>
+<l>    throw ('随机3个点在同一直线上，请重试！')</l>
+<l>endif</l>
+<c>* 平面方程ABC</c>
+<l>A := n[0]</l>
+<l>B := n[1]</l>
+<l>C := n[2]</l>
+<c>* Ax+By+Cz+D=0  D = -(Ax+By+Cz)</c>
+<l>D := -(A * pX[0] + B * pY[0] + C * pZ[0])</l>
+<l>return ()</l>
+</body>
+<docu id="get_plane_func">
+<parameters>
+<parameter id="A"/>
+<parameter id="B"/>
+<parameter id="C"/>
+<parameter id="D"/>
+<parameter id="IsDebug"/>
+<parameter id="Object3DPlane">
+<mixed_type>false</mixed_type>
+<sem_type>handle</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

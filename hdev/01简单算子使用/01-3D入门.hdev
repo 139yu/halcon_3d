@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>dev_get_window (WindowHandle)</l>
+<c></c>
+<l>gen_circle_contour_xld (ContCircle, 200, 200, 100, 0, 6.28318, 'positive', 1)</l>
+<c></c>
+<c>* 位姿：物体在xyz上的偏移量，以及绕xyz旋转的角度</c>
+<l>Pose := [0,0,0,0,0,0,0]</l>
+<c>* 或使用下面方式创建位姿</c>
+<l>* create_pose (0.1, 0.1, 0.1, 90, 90, 90, 'Rp+T', 'gba', 'point', Pose1)</l>
+<c></c>
+<c>* 生成一个无限平面,第二三个参数描述一个平面的xy坐标，单位米</c>
+<l>gen_plane_object_model_3d (Pose, [], [], ObjectModel3D)</l>
+<c></c>
+<c>* 生成一个宽1m、高1m的正方形平面</c>
+<l>X := [-0.5,0.5,0.5,-0.5]</l>
+<l>Y := [0.5,0.5,-0.5,-0.5]</l>
+<c></c>
+<l>gen_plane_object_model_3d (Pose, X,Y, ObjectModel3D)</l>
+<c>* 生成一个半径为0.5的球体</c>
+<l>gen_sphere_object_model_3d (Pose, 0.5, ObjectModel3D1)</l>
+<c>* 同上</c>
+<l>gen_sphere_object_model_3d_center (0.5, 0.5, 0, 0.5, ObjectModel3D2)</l>
+<c>* 生成一个圆柱，0.5：半径，0,1：z轴的最大和最小值</c>
+<l>gen_cylinder_object_model_3d (Pose, 0.5, 0, 1, ObjectModel3D3)</l>
+<c>* 生成一个正方体</c>
+<l>gen_box_object_model_3d (Pose, 0.5 ,0.5, 0.5, ObjectModel3D4)</l>
+<c></c>
+<l>models3D := [ObjectModel3D,ObjectModel3D1,ObjectModel3D2,ObjectModel3D3,ObjectModel3D4]</l>
+<c></c>
+<l>Labels := ['有限平面','球体01','球体03','圆柱','正方体']</l>
+<c></c>
+<l>paramName := ['disp_pose','color_0','color_1','color_2','color_3','color_4']</l>
+<l>paramValue := ['true','blue','white','green','red','yellow']</l>
+<c>* 显示模型</c>
+<l>visualize_object_model_3d (WindowHandle, models3D, [], Pose, paramName, paramValue, [], Labels, [], PoseOut)</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>

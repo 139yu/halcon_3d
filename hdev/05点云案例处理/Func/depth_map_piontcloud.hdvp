@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.05.0.0">
+<procedure name="depth_map_piontcloud">
+<interface>
+<io>
+<par name="ImageZ" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="ScaleFactor" base_type="ctrl" dimension="0"/>
+<par name="bGC" base_type="ctrl" dimension="0"/>
+<par name="bPlane" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="ObjectModel3D" base_type="ctrl" dimension="0"/>
+<par name="ObjectModelPlane" base_type="ctrl" dimension="0"/>
+<par name="zScale" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<xb>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</xb>
+<docu id="depth_map_piontcloud">
+<parameters>
+<parameter id="ImageZ"/>
+<parameter id="ObjectModel3D"/>
+<parameter id="ObjectModelPlane"/>
+<parameter id="ScaleFactor"/>
+<parameter id="bGC"/>
+<parameter id="bPlane"/>
+<parameter id="zScale"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.11.1.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>read_image(Image, './test.tif')</l>
+<c></c>
+<l>ScaleFactory := 0.01</l>
+<c></c>
+<l>depth_image_to_pointcloud (Image, ScaleFactory, true, ObjectModel3D)</l>
+<c>* 快速采样</c>
+<l>sample_object_model_3d (ObjectModel3D, 'fast', 3, [], [], SampledObjectModel3D)</l>
+<c>*三角化平面</c>
+<l>triangulate_object_model_3d (SampledObjectModel3D, 'greedy', [], [], TriangulatedObjectModel3D, Information)</l>
+<c></c>
+<l>Width := 600</l>
+<l>Height := 390</l>
+<c></c>
+<l>dev_close_window ()</l>
+<l>dev_open_window (0, 0, Width, Height, 'black', WindowHandle)</l>
+<c></c>
+<l>BorderFact := 1.5</l>
+<c></c>
+<l>IsTelecentric := false</l>
+<c></c>
+<l>gen_cam_par_and_pose (IsTelecentric, ObjectModel3D, BorderFact, Width,\
+                      Height, PoseInit, CameraParam)</l>
+<l>GenParamName := ['lut','intensity','disp_pose_0','disp_background']</l>
+<l>GenParamValue := ['hsi','coord_z','true','true']</l>
+<l>visualize_object_model_3d (WindowHandle, ObjectModel3D, CameraParam, PoseInit,\
+                           GenParamName, GenParamValue, [], [], [], PoseOut)</l>
+<c></c>
+<l>stop()</l>
+<c></c>
+<l>dev_set_color('yellow')</l>
+<l>create_drawing_object_rectangle2 (150, 150, 0, 100, 100, DrawID)</l>
+<l>set_drawing_object_params (DrawID, 'color','yellow')</l>
+<l>set_drawing_object_params (DrawID, 'line_width', 1)</l>
+<l>attach_drawing_object_to_window (WindowHandle, DrawID)</l>
+<l>stop()</l>
+<l>get_drawing_object_params (DrawID, ['row','column','phi','length1','length2'], DrawVal)</l>
+<l>gen_rectangle2 (Rectangle, DrawVal[0], DrawVal[1], DrawVal[2], DrawVal[3], DrawVal[4])</l>
+<l>detach_drawing_object_from_window (WindowHandle, DrawID)</l>
+<c></c>
+<l>gen_3d_volumn (Rectangle, TriangulatedObjectModel3D, CameraParam, PoseInit, ScaleFactory,\
+               WindowHandle, ObjectModel3D, m_volumn)</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>

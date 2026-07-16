@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="24.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<c>* 三维物体模型（例如由三维传感器采集得到的模型）可能存在物体坐标系与物体主轴方向不重合的情况。</c>
+<c>* 若该物体带有脊线特征，则理想状态是将物体坐标系与该脊线对齐，例如，将 x 轴设定为脊线的延伸方向。</c>
+<c>* 本示例演示了如何使用算子moments_object_model_3d，将三维数据与 x、y、z 坐标轴进行对齐。</c>
+<c>* 该算子可用于计算三维物体模型中所有点的均值，此外，还能提取模型的主轴。其中，主主轴对应数据方差最大的方向。</c>
+<c>* 当三维物体模型被转换至主轴坐标系后，x 轴对应第一主轴，y 轴对应第二主轴，z 轴对应第三主轴。</c>
+<l>dev_close_window ()</l>
+<l>FontSize := 14</l>
+<l>WindowSize := 500</l>
+<l>dev_open_window (0, 0, WindowSize, WindowSize, 'white', WindowHandle1)</l>
+<l>set_display_font (WindowHandle1, FontSize, 'mono', 'true', 'false')</l>
+<c>* </c>
+<c>* Set visualization parameters for the 3d object model</c>
+<c>* A lookup table (lut) is set that transforms attribute values into</c>
+<c>* a color. In this example the color encodes the value of the</c>
+<c>* z-component of the data. The alpha parameter defines the</c>
+<c>* transparency of the object model.</c>
+<l>GenParamName := ['lut', 'color_attrib', 'light_position', 'disp_pose', 'alpha']</l>
+<l>GenParamValue := ['color1', 'coord_z', '0.0 0.0 -0.3 1.0', 'true', 0.9]</l>
+<c>* Define factor for scaling meter to millimeters</c>
+<l>Scale2Millimeter := 1000</l>
+<c>* Read the 3d object model from file</c>
+<l>read_object_model_3d ('cutting_edge.om3', 'm', [], [], ObjectModel3D, Status)</l>
+<c>* Define the poses from which the camera looks at the object model</c>
+<l>create_pose (-0.0005, -0.0005, 0.04, 280, 0, 20, 'Rp+T', 'gba', 'point', DispPose1)</l>
+<l>create_pose (0, -0.0005, 0.04, 280, 0, 20, 'Rp+T', 'gba', 'point', DispPose2)</l>
+<c>* </c>
+<c>* Display introduction text</c>
+<l>Information := 'This example shows how an object coordinate'</l>
+<l>Information[1] := 'system can be aligned with the data given by'</l>
+<l>Information[2] := 'a 3D object model.'</l>
+<l>Information[3] := ' '</l>
+<l>Information[4] := 'This may be useful, e.g., to align a cutting'</l>
+<l>Information[5] := 'edge in a way that the x-axis indicates the'</l>
+<l>Information[6] := 'direction of the ridge.'</l>
+<l>disp_message (WindowHandle1, Information, 'window', 12, 12, 'black', 'false')</l>
+<l>disp_continue_message (WindowHandle1, 'black', 'true')</l>
+<l>stop ()</l>
+<c>* </c>
+<c>* Visualize the 3d object model and its object coordinate system.</c>
+<c>* The original coordinate axes are not aligned with the main axes</c>
+<c>* of the data. The object coordinate system is shown with the</c>
+<c>* x-axis in red, the y-axis in green and the z-axis in blue.</c>
+<c>* The color of an object model point is determined by its z-coordinate.</c>
+<c>* Thus, the color of the object model shows that points along the</c>
+<c>* ridge of the object have different z-coordinates.</c>
+<l>dev_set_window (WindowHandle1)</l>
+<l>dev_clear_window ()</l>
+<l>WindowTitle := 'The coordinate axes of the object model are'</l>
+<l>WindowTitle[1] := 'not aligned with the main axes of the model.'</l>
+<l>WindowTitle[2] := 'The coloring of the model shows that points'</l>
+<l>WindowTitle[3] := 'along the top ridge of the object have '</l>
+<l>WindowTitle[4] := 'different z-coordinates.'</l>
+<l>disp_object_model_3d (WindowHandle1, ObjectModel3D, [], DispPose1, GenParamName, GenParamValue)</l>
+<l>disp_message (WindowHandle1, WindowTitle, 'window', 12, 12, 'black', 'false')</l>
+<l>disp_continue_message (WindowHandle1, 'black', 'true')</l>
+<l>stop ()</l>
+<l>dev_open_window (0, WindowSize + 13, WindowSize, WindowSize, 'white', WindowHandle2)</l>
+<l>set_display_font (WindowHandle2, FontSize, 'mono', 'true', 'false')</l>
+<c>* </c>
+<c>* Compute the principal axes system for the 3d object model</c>
+<c>* where the axes represent the directions largest variance.</c>
+<c>* Transform the object model into the computed new</c>
+<c>* coordinate system.</c>
+<c>* </c>
+<c>* The pose returned by moments_object_model_3d describes</c>
+<c>* the principal axes coordinate system with respect to</c>
+<c>* the original coordinate system of the 3D object model.</c>
+<c>* The origin of the principal axes coordinate system is identical with</c>
+<c>* the mean point of the object model.</c>
+<c>* 计算质心位姿</c>
+<l>moments_object_model_3d (ObjectModel3D, 'principal_axes', Pose)</l>
+<c>* Transform the 3D object model into its principal axes</c>
+<c>* coordinate system.</c>
+<c>* For transforming the points of the 3D object model into the</c>
+<c>* principal axes coordinate system, the inverse of the computed</c>
+<c>* pose is needed.</c>
+<c>* 将得到位姿近逆变换</c>
+<l>pose_invert (Pose, PoseInvert)</l>
+<c>* 将位姿变换为矩阵</c>
+<l>pose_to_hom_mat3d (PoseInvert, HomMat3D)</l>
+<l>affine_trans_object_model_3d (ObjectModel3D, HomMat3D, ObjectModel3DPCA)</l>
+<c>* Compute the moments of second order for the original model.</c>
+<c>* These moments correspond to the variances in x, y, z and the</c>
+<c>* covariances xy, xz and yz.</c>
+<l>moments_object_model_3d (ObjectModel3D, 'central_moment_2_points', Moments)</l>
+<c>* Extract the variance along the x, y, z axes (scaled to mm²)</c>
+<l>MomentsSecondOrderOrig := Moments[0:2] * (Scale2Millimeter * Scale2Millimeter)</l>
+<c>* Compute the moments of second order for the transformed model</c>
+<l>moments_object_model_3d (ObjectModel3DPCA, 'central_moment_2_points', MomentsPCA)</l>
+<c>* Extract the variance along the x, y, z axes (scaled to mm²)</c>
+<l>MomentsSecondOrderPCA := MomentsPCA[0:2] * (Scale2Millimeter * Scale2Millimeter)</l>
+<c>* </c>
+<c>* Display results</c>
+<l>WindowTitle := 'The 3D object model was transformed into its'</l>
+<l>WindowTitle[1] := 'principal axes system. The object model is'</l>
+<l>WindowTitle[2] := 'now aligned with the coordinate axes.'</l>
+<c>* Compare the variances along the x, y, z axis in</c>
+<c>* the old and in the new object coordinate system.</c>
+<c>* For the principal axes system, it can be seen that</c>
+<c>* the largest variance in the data is concentrated</c>
+<c>* along the x-axis. The second largest variance</c>
+<c>* occurs along the y-axis.</c>
+<l>OldVariance[0] := 'Variances in original system:'</l>
+<l>OldVariance[1] := ' '</l>
+<l>OldVariance[2] := '  Var(x) = ' + MomentsSecondOrderOrig[0]$'.3f' + ' mm²'</l>
+<l>OldVariance[3] := '  Var(y) = ' + MomentsSecondOrderOrig[1]$'.3f' + ' mm²'</l>
+<l>OldVariance[4] := '  Var(z) = ' + MomentsSecondOrderOrig[2]$'.3f' + ' mm²'</l>
+<c>* Variances for the object model in the new coordinate system</c>
+<l>NewVariance[0] := 'Variances in new system:'</l>
+<l>NewVariance[1] := ' '</l>
+<l>NewVariance[2] := '  Var(x) = ' + MomentsSecondOrderPCA[0]$'.3f' + ' mm²'</l>
+<l>NewVariance[3] := '  Var(y) = ' + MomentsSecondOrderPCA[1]$'.3f' + ' mm²'</l>
+<l>NewVariance[4] := '  Var(z) = ' + MomentsSecondOrderPCA[2]$'.3f' + ' mm²'</l>
+<l>disp_object_model_3d (WindowHandle2, ObjectModel3DPCA, [], DispPose2, GenParamName, GenParamValue)</l>
+<l>disp_message (WindowHandle2, WindowTitle, 'window', 12, 12, 'black', 'false')</l>
+<l>disp_message (WindowHandle2, NewVariance, 'window', 350, 12, 'black', 'false')</l>
+<l>disp_message (WindowHandle1, OldVariance, 'window', 350, 12, 'black', 'false')</l>
+<l>stop ()</l>
+<l>disp_end_of_program_message (WindowHandle1, 'black', 'true')</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>
