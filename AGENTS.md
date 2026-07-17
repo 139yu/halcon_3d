@@ -1,48 +1,52 @@
-﻿# Repository Guidelines
+# 仓库规范
 
-## Project Structure
+## 项目结构
 
-This repository contains MVTec HALCON 3D machine vision examples organized by topic.
+本仓库包含 MVTec HALCON 3D 机器视觉示例，按主题分类。
 
-- `hdev/` — Example programs (`.hdev` files), grouped by category:
-  - `01简单算子使用` — Basic 3D operator usage
-  - `02匹配案例` — Shape-based and surface matching
-  - `03特征及分割` — Feature extraction and 3D segmentation
-  - `04Blob分析` — Blob analysis with PLY point cloud data
-  - `05点云案例处理` — Point cloud processing (fitting, ROI, volume, etc.)
-- `func/` — Reusable HALCON procedures (`.hdvp` files) such as plane fitting, depth-to-pointcloud conversion, and 3D volume generation.
+- `hdev/` — 示例程序（`.hdev` 文件），按类别分组：
+  - `01简单算子使用` — 基础 3D 算子用法
+  - `02匹配案例` — 形状匹配与表面匹配
+  - `03特征及分割` — 特征提取与 3D 分割
+  - `04Blob分析` — 基于 PLY 点云数据的 Blob 分析
+  - `05点云案例处理` — 点云处理（拟合、ROI、体积等）
+- `func/` — 可复用的 HALCON 过程文件（`.hdvp`），如平面拟合、深度图转点云、3D 体积生成等。
 
-Data files (`.tif`, `.om3`, `.ply`) live alongside the corresponding `.hdev` scripts they support.
+数据文件（`.tif`、`.om3`、`.ply`）与对应的 `.hdev` 脚本放在同一目录下。
 
-## Running Scripts
+## 运行脚本
 
-All scripts execute directly in **MVTec HALCON** or **HDevelop**. There is no build step.
+所有脚本直接在 **MVTec HALCON** 或 **HDevelop** 中运行，无需构建步骤。
 
-To open and run a script: start HDevelop, open the `.hdev` file, and click the run button (F5). Scripts in `05点云案例处理` may depend on shared procedures under `Func/`.
+打开并运行脚本：启动 HDevelop，打开 `.hdev` 文件，点击运行按钮（F5）。`05点云案例处理` 目录下的脚本可能依赖 `Func/` 下的共享过程文件。
 
-There are no automated test or linting commands for this project.
+本项目无自动化测试或代码检查命令。
 
-## Coding Style
+## 编码风格
 
-- Use **4-space indentation** inside HALCON program blocks.
-- Names for directories, scripts, and procedures are written in **Chinese** so the topic of each file is immediately clear. English aliases are acceptable for cross-platform portability but not required.
-- Procedure files (`.hdvp`) placed under `func/` should have a clear purpose reflected in their filename, e.g., `cal_plane_angle.hdvp`.
-- Avoid long monolithic scripts; split reusable logic into `.hdvp` procedures.
-- Keep a consistent camera parameter and pose generation approach — prefer the helpers in `func/gen_cam_par_and_pose.hdvp` and `func/depth_image_to_pointcloud.hdvp` over ad-hoc duplication.
+- HALCON 程序块内使用 **4 空格缩进**。
+- 目录、脚本和过程文件的命名使用**中文**，使每个文件的主题一目了然。英文别名可用于跨平台兼容，但不强制。
+- 放在 `func/` 下的过程文件（`.hdvp`）应有明确用途并通过文件名体现，如 `cal_plane_angle.hdvp`。
+- 避免冗长的单一脚本；将可复用逻辑拆分为 `.hdvp` 过程文件。
+- 保持一致的相机参数和位姿生成方式——优先使用 `func/gen_cam_par_and_pose.hdvp` 和 `func/depth_image_to_pointcloud.hdvp` 中的辅助过程，避免临时复制。
 
-## Testing Guidelines
+## 测试规范
 
-This project does not use an automated testing framework. Quality is verified by:
+本项目不使用自动化测试框架。质量通过以下方式验证：
 
-- Opening each `.hdev` file in HDevelop and running it end-to-end.
-- Confirming the expected 3D model, point cloud, or measurement appears in the graphics window.
-- Checking logged numeric results (angles, distances, volumes) for correctness.
+- 在 HDevelop 中打开每个 `.hdev` 文件并端到端运行。
+- 确认预期的 3D 模型、点云或测量结果显示在图形窗口中。
+- 检查日志输出的数值结果（角度、距离、体积等）是否正确。
 
-When adding new examples, include a matching data file (`.tif`, `.om3`, or `.ply`) so the script is self-contained and runnable immediately.
+添加新示例时，需附带相应的数据文件（`.tif`、`.om3` 或 `.ply`），确保脚本可独立运行。
 
-## Commit & Pull Request Guidelines
+**声称任何修复或功能"完成"之前，必须先运行验证。** 在 HDevelop 中打开受影响的脚本，确认端到端运行通过。将验证结果写入回复。验证失败则不得声称完成。
 
-Commit messages should be written in **Chinese** and describe the high-level topic, matching the existing history:
+## 提交与 Pull Request 规范
+
+**不得自动提交、自动推送或自动创建 PR。** 仅在用户明确说"提交" / "commit" / "push" / "提 PR" 时才执行 git 操作。
+
+提交信息应使用**中文**，描述高层主题，与已有历史保持一致：
 
 ```
 点云处理案例
@@ -50,22 +54,108 @@ Commit messages should be written in **Chinese** and describe the high-level top
 halcon 3d operator
 ```
 
-Follow this format for new contributions:
+新贡献遵循以下格式：
 
-- **Scope** (optional): prefix with `feat`, `fix`, `refactor`, or `docs`
-- **Body**: a short Chinese description of what the commit adds or changes
+- **范围**（可选）：使用 `feat`、`fix`、`refactor` 或 `docs` 前缀
+- **正文**：用中文简要描述新增或修改的内容
 
-When opening a pull request, include:
+提交 Pull Request 时需包含：
 
-- A short title and a one-paragraph description in Chinese (or English if the audience is mixed).
-- A note on which HDevelop version the scripts were tested with.
-- Any new dependencies on HALCON licenses or libraries.
+- 简短标题和一段中文描述（若受众混合可用英文）
+- 注明测试所用的 HDevelop 版本
+- 任何对 HALCON 许可证或库的新增依赖
 
-## Agent-Specific Notes
+## Agent 工作流
 
-This repository is designed for **AI coding agents** and human contributors alike. When modifying `.hdev` or `.hdvp` files:
+本仓库面向 **AI 编程智能体**与人类贡献者共同使用。本节定义了智能体在本项目中应遵循的操作规范（规则 0-7 继承自 `.agents/CONVERSATION_STANDARDS.md` 中的共享对话规范）。
 
-- Read the `README.md` and this file first for orientation.
-- Respect the existing directory hierarchy and naming scheme.
-- When a helper procedure already exists in `func/`, reuse it instead of inlining its logic.
-- Test new scripts in HDevelop before committing.
+### 规则 0 — 对话开始时先喊「牢大」
+
+每次对话的第一句回复，必须以「牢大」开头。这是规范加载确认信号，不遵守即视为未加载本规范。
+
+### 阶段 → 动作映射
+
+每个开发阶段开始前，按当前意图在可用 Skill 列表中匹配，有则必用，无则按本规范降级处理。
+
+| 阶段 / 意图 | 动作（有匹配 Skill 则走 Skill，否则按下列降级） |
+|---|---|
+| 接任务 / 理解需求 | 读项目规范、README、AGENTS.md；澄清不明确的约束 |
+| Bug / 异常 / 非预期行为 | 先复现，再定位；匹配调试类 Skill |
+| 新功能 / 改动 / 交互设计 | 先做需求澄清与方案设计（brainstorming）；涉及较大 UI 变动则先出设计稿 |
+| 设计完成后 | 输出书面计划（writing-plans），含分步任务与影响范围 |
+| 按计划实现 | 按步执行（do / executing-plans）；多独立子任务可并行 |
+| 声称完成前 | 先运行验证（verification）；无验证类 Skill 时等效编译/运行测试 |
+| 较大改动 / 分支收尾 | 走审查流程（code-review + finishing-a-development-branch） |
+| 同一问题两轮未解 | 先根因分析 → 书面说明 → 等用户确认（见规则 2） |
+
+同阶段多个 Skill 都匹配时，优先更具体、与当前操作更近的一个；互斥时选流程在前的（如先设计再实现）。
+
+### 规则 2 — 两轮失败 → 先根因分析再改代码，等用户确认
+
+同一问题连续两轮修复后仍不稳定复现，或用户反馈"改了仍不对 / 行为随机"：
+
+1. **停止堆补丁** — 不再追加零散的 if、事件补丁或半套重构。
+2. **读代码定根因** — 梳理状态来源、转换入口、事件路由，区分"架构问题"与"单点 bug"。
+3. **书面说明**（回复用户）：
+   - 现象与复现条件
+   - **根因**（状态分散、事件被拦截、多字段不同步等）
+   - 已尝试的改动及为何未根治
+   - 建议方案（含范围、风险、是否需要重构）
+4. **等用户确认后**再实施。
+
+**禁止：**
+- 用户未确认方案前多轮"试一个补丁 → 未验证 → 再试一个"。
+- 根因未明时声称"已修复"。
+- 半迁移导致工程无法编译仍继续叠功能。
+
+### 规则 4 — 每个阶段开始前检查可用 Skill
+
+切换到新阶段（分析 → 设计 → 实现 → 验证 → 收尾）时，重新审视当前会话的 Skill 列表，按意图匹配，有则必用。不硬编码 Skill 名称，不虚构不存在的 Skill。
+
+### 规则 5 — 改动前按规模分级
+
+| 规模 | 必须 | 按需 |
+|---|---|---|
+| 小改（单文件/纯文案） | 验证 | — |
+| 中等（多文件、行为变更） | 验证 | 审查类 Skill |
+| 大改（多模块/分支收尾） | 验证 + 审查 | 分支收尾类 Skill |
+
+对于本项目，"验证"指在 HDevelop 中端到端运行受影响的 `.hdev` 脚本。
+
+### 规则 6 — 改动前说明影响范围
+
+实施代码改动前，简要说明将涉及哪些文件/模块，以及预期的行为变化。多文件改动尤其需要在回复中列出受影响的关键路径。避免用户对无关模块产生"惊喜"副作用。
+
+**反例：** 改一半发现编译不过，留下红色波浪线，声称"完成了"继续做下一个功能。
+
+### 规则 7 — 不得擅自安装依赖或修改环境配置
+
+安装第三方包、修改系统/用户级环境变量、更改框架或构建工具的全局配置、或执行会改变运行环境状态的操作之前，必须先征得用户同意。
+
+**适用场景：**
+- `pip install` / `npm install` / `dotnet add package` 等包管理操作
+- 修改 `.env`、`launchSettings.json`、系统 `PATH` 等
+- 变更 Docker 配置、数据库连接字符串、防火墙规则等
+
+**不适用：** 在已声明的项目目录内创建/编辑源码文件、运行项目自身的构建/测试命令。
+
+### 规则 8 — 遇到不确定的问题必须询问用户，禁止猜测
+
+任何时候，如果对用户的需求、意图、偏好的技术方案、文件编码、命名方式、或任何其他无法从现有规范和代码中确定的事项存在疑问，**必须先向用户确认，再做执行**。不得基于假设或猜测直接行动。
+
+**典型场景：**
+- 用户指令有歧义，存在多种合理理解
+- 涉及文件编码、格式选择等用户可能有偏好但未明确说明的决策
+- 对现有代码或配置的解读存在不确定性
+- 需要选择技术方案但用户未指定方向
+
+**反例：** 遇到不确定的事情自己猜测一个答案直接执行，事后用户发现不对再返工。
+
+### 项目专属注意事项
+
+修改 `.hdev` 或 `.hdvp` 文件时：
+
+- 遵循现有目录层级和命名方案。
+- 若 `func/` 下已有现成的辅助过程，复用而不要内联其逻辑。
+- 新脚本提交前在 HDevelop 中测试通过。
+- 数据文件（`.tif`、`.om3`、`.ply`）与脚本放在一起，确保每个示例可独立运行。

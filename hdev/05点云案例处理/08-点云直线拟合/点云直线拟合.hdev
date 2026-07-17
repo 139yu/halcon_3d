@@ -202,6 +202,16 @@
 <l>VisParamValue := ['true','coord_z','yellow','white','green',0.5,0.5]</l>
 <l>visualize_object_model_3d (WindowHandle, AllObjects, CameraParam, PoseOut, \
                            VisParamName, VisParamValue, [], [], [], PoseOut4)</l>
+<c></c>
+<l>Direction := [0,0,1]</l>
+<l>GenParams := ['xyz_mapping_max_view_angle','xyz_mapping_max_view_dir_x','xyz_mapping_max_view_dir_y',\
+              'xyz_mapping_max_view_dir_z']</l>
+<l>GenValues := [rad(80),Direction]</l>
+<l>triangulate_object_model_3d (ObjectModel3DPlane, 'xyz_mapping', GenParams, GenValues,\
+                             TriangulatedPlane, Information1)</l>
+<l>if(Debug == 1)</l>
+<c>    </c>
+<l>endif</l>
 </body>
 <docu id="main">
 <parameters/>
